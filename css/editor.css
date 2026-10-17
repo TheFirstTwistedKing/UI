@@ -248,6 +248,10 @@ button,input,select,textarea{font:inherit;color:inherit}
 .lib-item.shape:hover svg{fill:var(--accent);transform:scale(1.08)}
 .lib-item.orn-i svg{fill:none;color:var(--muted);--sw:1.2px}
 .lib-item.orn-i:hover svg{color:var(--accent)}
+.lib-item.cmp .sw{position:relative;width:100%;height:64px;overflow:hidden;border-radius:var(--r1);background:var(--bg)}
+.lib-item.cmp .stage{position:absolute;left:0;top:0;transform-origin:0 0;pointer-events:none}
+.lib-item.cmp .stage .shp,.lib-item.cmp .stage .orn{position:absolute;inset:0;width:100%;height:100%;overflow:visible}
+.lib-item.cmp:hover .sw{box-shadow:inset 0 0 0 1px var(--line-2)}
 .lib-foot{border-top:1px solid var(--line);padding:8px 10px 10px;display:flex;flex-direction:column;gap:8px}
 .lib-foot p{margin:0;font-size:var(--t-xs);color:var(--muted);line-height:1.5}
 .lib-foot .btn{justify-content:center}
