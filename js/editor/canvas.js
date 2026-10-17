@@ -1,0 +1,197 @@
+/* 아트보드 렌더링 · 선택 오버레이 · 드래그 이동/크기 조절 */
+import { TYPES, state, geo, view, $, esc, r3, get, rgba, kidsMap, descendants, isLocked, topSel, select, snapshot, pushHistory, autosave, renderAll } from "../core/state.js";
+
+let elMap = {}, ovEl = null;
+
+/* ---------- 레이아웃 계산 (px / % → 아트보드 픽셀) ---------- */
+export const len = (v, u, dim) => u === "%" ? v/100*dim : v;
+export function computeLayout(){
+  const W = +state.device, H = state.project.page.height;
+  geo.root = {x:0, y:0, w:W, h:H};
+  geo.L = {};
+  const km = kidsMap();
+  (function walk(pid, pr){
+    for(const n of km[pid]||[]){
+      const p = n.props;
+      const w = len(p.w, p.wu, pr.w), h = len(p.h, p.hu, pr.h);
+      const r = {x:pr.x + len(p.x, p.xu, pr.w), y:pr.y + len(p.y, p.yu, pr.h), w, h};
+      geo.L[n.id] = r;
+      walk(n.id, r);
+    }
+  })("_", geo.root);
+}
+export const parentRect = n => n.parent ? geo.L[n.parent] : geo.root;
+
+/* ---------- 렌더 ---------- */
+export function renderCanvas(){
+  computeLayout();
+  const W = geo.root.w, H = geo.root.h;
+  const stage = $("stage"), scr = $("screen"), shot = $("shot");
+  if(state.zoom === "fit"){
+    const cs = getComputedStyle(stage);
+    const aw = stage.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
+    const ah = stage.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom);
+    geo.scale = Math.max(0.05, Math.min(aw/W, ah/H));
+  } else geo.scale = +state.zoom;
+  shot.style.width = W*geo.scale + "px"; shot.style.height = H*geo.scale + "px";
+  scr.style.width = W + "px"; scr.style.height = H + "px";
+  scr.style.transform = `scale(${geo.scale})`;
+  scr.style.background = state.project.page.bg;
+  scr.innerHTML = "";
+  const km = kidsMap();
+  elMap = {};
+  (function build(pid, parentEl, pr){
+    for(const n of km[pid]||[]){
+      const el = document.createElement("div");
+      el.dataset.id = n.id; elMap[n.id] = el;
+      paint(el, n, pr);
+      parentEl.appendChild(el);
+      build(n.id, el, geo.L[n.id]);
+    }
+  })("_", scr, geo.root);
+  ovEl = document.createElement("div"); ovEl.className = "ov"; ovEl.innerHTML = overlayHTML();
+  scr.appendChild(ovEl);
+}
+
+// 지정한 요소와 그 자손만 다시 칠한다 (드래그·속성 입력 중 전체 DOM 재생성 방지)
+export function refreshNodes(ids){
+  computeLayout();
+  const all = new Set();
+  for(const id of ids){ all.add(id); descendants(id).forEach(d => all.add(d)); }
+  for(const id of all){ const n = get(id), el = elMap[id]; if(!n || !el){ renderCanvas(); return; } paint(el, n, parentRect(n)); }
+  if(ovEl) ovEl.innerHTML = overlayHTML();
+}
+
+function paint(d, n, pr){
+  const p = n.props, t = TYPES[n.type], r = geo.L[n.id];
+  d.className = "el" + (p.visible ? "" : " hid") + (p.locked ? " lock" : "");
+  for(const ch of [...d.children]) if(!ch.classList.contains("el")) ch.remove();
+  d.style.cssText = "";
+  const s = d.style;
+  s.left = (r.x - pr.x) + "px"; s.top = (r.y - pr.y) + "px";
+  s.width = Math.max(0,r.w) + "px"; s.height = Math.max(0,r.h) + "px";
+  if(p.fillAlpha > 0) s.background = rgba(p.fill, p.fillAlpha);
+  if(p.opacity < 1) s.opacity = p.opacity;
+  if(n.type === "ellipse") s.borderRadius = "50%";
+  else if(p.radius > 0) s.borderRadius = p.radius + "px";
+  if(p.borderWidth > 0) s.border = `${p.borderWidth}px ${p.borderStyle} ${p.borderColor}`;
+  if(p.shadowOn) s.boxShadow = `${p.shadowX}px ${p.shadowY}px ${p.shadowBlur}px ${p.shadowSpread}px ${rgba(p.shadowColor, p.shadowAlpha)}`;
+  if(p.rotation) s.transform = `rotate(${p.rotation}deg)`;
+  if(p.clip) s.overflow = "hidden";
+  if(t.text){
+    const x = document.createElement("div"); x.className = "tx";
+    x.textContent = p.text;
+    const ts = x.style;
+    ts.fontFamily = `${p.font}, "IBM Plex Sans KR", sans-serif`; ts.fontWeight = p.fontWeight;
+    ts.fontSize = p.fontSize + "px"; ts.lineHeight = p.lineHeight; ts.letterSpacing = p.letterSpacing + "px";
+    ts.color = p.color; ts.textAlign = p.align;
+    ts.justifyContent = {top:"flex-start", center:"center", bottom:"flex-end"}[p.valign];
+    d.prepend(x);
+  }
+  if(t.image){
+    if(p.src){ const im = document.createElement("img"); im.className = "img"; im.alt = ""; im.draggable = false; im.src = p.src; im.style.objectFit = p.fit; d.prepend(im); }
+    else { const ph = document.createElement("div"); ph.className = "ph"; ph.textContent = "이미지"; ph.style.fontSize = Math.max(10, 11/geo.scale) + "px"; d.prepend(ph); }
+  }
+}
+
+const boxStyle = (r, rot) => `left:${r.x}px;top:${r.y}px;width:${Math.max(0,r.w)}px;height:${Math.max(0,r.h)}px${rot?`;transform:rotate(${rot}deg)`:""}`;
+function overlayHTML(){
+  const n = get(state.sel); if(!n) return "";
+  const r = geo.L[n.id], pr = parentRect(n), p = n.props;
+  const k = 1/geo.scale, hs = 9*k, multi = state.sels.length > 1;
+  let h = multi || !n.parent ? "" : `<div class="pbox" style="left:${pr.x}px;top:${pr.y}px;width:${pr.w}px;height:${pr.h}px;border-width:${k}px"></div>`;
+  for(const id of state.sels){
+    const o = get(id); if(!o || id === n.id) continue;
+    h += `<div class="selbox sub" style="${boxStyle(geo.L[id], o.props.rotation)};border-width:${1.5*k}px"></div>`;
+  }
+  h += `<div class="selbox" style="${boxStyle(r, p.rotation)};border-width:${1.5*k}px"></div>`;
+  if(!multi && !isLocked(n)){
+    // 핸들은 요소와 같이 회전하는 래퍼 안에 둔다
+    const pts = {nw:[0,0],n:[.5,0],ne:[1,0],e:[1,.5],se:[1,1],s:[.5,1],sw:[0,1],w:[0,.5]};
+    const cur = ["ns","nesw","ew","nwse"], ang = {n:0,ne:1,e:2,se:3,s:0,sw:1,w:2,nw:3};
+    const rs = Math.round(((p.rotation % 180) + 180) % 180 / 45);
+    h += `<div class="hwrap" style="${boxStyle(r, p.rotation)}">`;
+    for(const key in pts){
+      const [fx,fy] = pts[key];
+      h += `<div class="hd" data-h="${key}" style="left:${fx*r.w-hs/2}px;top:${fy*r.h-hs/2}px;width:${hs}px;height:${hs}px;border-width:${k}px;cursor:${cur[(ang[key]+rs)%4]}-resize"></div>`;
+    }
+    h += `</div>`;
+  }
+  const label = multi ? `${state.sels.length}개 선택` : `${esc(p.name)} · ${Math.round(r.w)}×${Math.round(r.h)}${isLocked(n) ? " · 잠김" : ""}`;
+  h += `<div class="tag" style="left:${r.x}px;top:${r.y - 20*k}px;font-size:${11*k}px">${label}</div>`;
+  return h;
+}
+
+/* ---------- 드래그 / 크기 조절 ---------- */
+// 픽셀 이동량 d를 단위(px/%)에 맞춰 값 v에 더한다. 스냅은 px 4단위, % 0.5단위.
+export function shiftVal(v, u, d, dim){
+  if(u === "%"){ const nv = v + d/(dim||1)*100; return state.snap ? Math.round(nv*2)/2 : r3(nv); }
+  const nv = v + d; return state.snap ? Math.round(nv/4)*4 : Math.round(nv);
+}
+const minSize = (v, u, dim) => Math.max(u === "%" ? 100/(dim||1) : 1, v);
+function dragSession(e, onMove, nodes){
+  nodes = nodes.filter(n => n && !isLocked(n)); if(!nodes.length) return;
+  e.preventDefault();
+  const before = snapshot(), sx = e.clientX, sy = e.clientY;
+  const items = nodes.map(n => ({n, P0:{...n.props}, pr:parentRect(n)}));
+  let moved = false;
+  const mv = ev => {
+    const dx = (ev.clientX - sx)/geo.scale, dy = (ev.clientY - sy)/geo.scale;
+    if(!moved && Math.hypot(ev.clientX-sx, ev.clientY-sy) < 3) return;
+    moved = true;
+    for(const it of items) onMove(it.n.props, dx, dy, it.P0, it.pr);
+    refreshNodes(items.map(it => it.n.id)); view.status();
+  };
+  const up = () => {
+    window.removeEventListener("pointermove", mv); window.removeEventListener("pointerup", up); window.removeEventListener("pointercancel", up);
+    if(moved){ pushHistory(before); view.props(); autosave(); }
+  };
+  window.addEventListener("pointermove", mv); window.addEventListener("pointerup", up); window.addEventListener("pointercancel", up);
+}
+function moveFn(p, dx, dy, P0, pr){
+  if(dx) p.x = shiftVal(P0.x, p.xu, dx, pr.w);
+  if(dy) p.y = shiftVal(P0.y, p.yu, dy, pr.h);
+}
+function resizeFn(hd){
+  return (p, dx, dy, P0, pr) => {
+    // 화면 이동량을 요소의 회전 좌표계로 바꾼 뒤, 반대편 변이 화면에서 고정되도록 중심 이동량을 다시 화면 좌표로 돌린다
+    const t = (p.rotation||0) * Math.PI/180, cos = Math.cos(t), sin = Math.sin(t);
+    const lx = dx*cos + dy*sin, ly = -dx*sin + dy*cos;
+    const ex = hd.includes("e") ? 1 : hd.includes("w") ? -1 : 0, ey = hd.includes("s") ? 1 : hd.includes("n") ? -1 : 0;
+    const dw = ex*lx, dh = ey*ly, cx = ex*dw/2, cy = ey*dh/2;
+    const mx = cx*cos - cy*sin - dw/2, my = cx*sin + cy*cos - dh/2;
+    if(dw) p.w = minSize(shiftVal(P0.w, p.wu, dw, pr.w), p.wu, pr.w);
+    if(dh) p.h = minSize(shiftVal(P0.h, p.hu, dh, pr.h), p.hu, pr.h);
+    p.x = shiftVal(P0.x, p.xu, mx, pr.w); p.y = shiftVal(P0.y, p.yu, my, pr.h);
+  };
+}
+export function nudge(dx, dy){
+  const movers = topSel().filter(n => !isLocked(n)); if(!movers.length) return;
+  const b = snapshot();
+  for(const n of movers){
+    const p = n.props, pr = parentRect(n);
+    if(dx) p.x = p.xu === "%" ? r3(p.x + dx/pr.w*100) : p.x + dx;
+    if(dy) p.y = p.yu === "%" ? r3(p.y + dy/pr.h*100) : p.y + dy;
+  }
+  pushHistory(b); renderAll(); autosave();
+}
+
+export function initCanvas(){
+  view.canvas = renderCanvas;
+  $("screen").addEventListener("pointerdown", e => {
+    if(e.button !== 0) return;
+    const hd = e.target.closest("[data-h]");
+    if(hd){ dragSession(e, resizeFn(hd.dataset.h), [get(state.sel)]); return; }
+    const g = e.target.closest(".el");
+    const add = e.shiftKey || e.ctrlKey || e.metaKey;
+    if(!g){ if(!add) select(null); return; }
+    const id = g.dataset.id;
+    if(add){ select(id, true); if(!state.sels.includes(id)) return; }
+    else if(!state.sels.includes(id)) select(id);
+    else if(state.sel !== id){ state.sel = id; renderAll(); }
+    dragSession(e, moveFn, topSel());
+  });
+  $("stage").addEventListener("pointerdown", e => { if(e.target === $("stage")) select(null); });
+  new ResizeObserver(() => { renderCanvas(); view.status(); }).observe($("stage"));
+  if(document.fonts) document.fonts.ready.then(() => renderCanvas());
+}

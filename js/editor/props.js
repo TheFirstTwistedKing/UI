@@ -1,0 +1,175 @@
+/* 오른쪽 패널: 선택한 요소의 속성 (CSS 기준) · 페이지 설정 */
+import { TYPES, FONTS, state, geo, view, $, esc, r3, get, descendants, snapshot, pushHistory, commit, autosave, toast } from "../core/state.js";
+import { renderCanvas, refreshNodes, computeLayout, parentRect, len } from "./canvas.js";
+
+const row = (label, ctl) => `<div class="row"><label>${label}</label><div class="ctl">${ctl}</div></div>`;
+const numI = (p, v, step, extra="") => `<input type="number" id="p-${p}" data-prop="${p}" data-kind="num" step="${step}" value="${v}" ${extra}>`;
+const txtI = (p, v) => `<input type="text" id="p-${p}" data-prop="${p}" data-kind="text" value="${esc(v)}">`;
+const colI = (p, v) => `<input type="color" id="p-${p}-c" data-prop="${p}" data-kind="color" value="${v}"><input type="text" id="p-${p}" data-prop="${p}" data-kind="color" value="${v}" spellcheck="false">`;
+const boolI = (p, v, extra="") => `<input type="checkbox" id="p-${p}" data-prop="${p}" data-kind="bool" ${v?"checked":""} ${extra}>`;
+const enumI = (p, v, opts) => `<select id="p-${p}" data-prop="${p}" data-kind="enum">${opts.map(o => { const [val, lab] = Array.isArray(o) ? o : [o, o]; return `<option value="${esc(val)}"${String(val)===String(v)?" selected":""}>${esc(lab)}</option>`; }).join("")}</select>`;
+const alphaI = (p, v) => numI(p, v, 0.05, 'min="0" max="1"');
+// 값 + 단위(px/%) 묶음. 단위를 바꾸면 화면상 크기를 유지하도록 값을 환산한다.
+const unitI = (p, v, u) => `<div class="uv"><input type="number" id="p-${p}" data-prop="${p}" data-kind="num" step="${u === "%" ? 0.5 : 1}" value="${r3(v)}"><select id="p-${p}u" data-prop="${p}u" data-kind="unit" data-axis="${p}"><option${u==="px"?" selected":""}>px</option><option${u==="%"?" selected":""}>%</option></select></div>`;
+const segI = (p, v, opts) => `<div class="seg" role="group">${opts.map(([val, lab]) => `<button type="button" data-seg="${p}" data-val="${val}" aria-pressed="${v===val}">${lab}</button>`).join("")}</div>`;
+
+function renderProps(){
+  const el = $("props"), n = get(state.sel);
+  if(!n){
+    const pg = state.project.page, S = 'data-scope="page"';
+    el.innerHTML = `<div class="sec"><h3>페이지</h3>
+      ${row("폭", `<span class="ro">${state.device}px · 상단 화면 폭에서 변경</span>`)}
+      ${row("높이", `<input type="number" id="pg-height" data-prop="height" data-kind="num" ${S} step="10" min="100" value="${pg.height}">`)}
+      ${row("배경색", `<input type="color" id="pg-bg-c" data-prop="bg" data-kind="color" ${S} value="${pg.bg}"><input type="text" id="pg-bg" data-prop="bg" data-kind="color" ${S} value="${pg.bg}" spellcheck="false">`)}
+    </div>
+    <div class="sec"><h3>사용법</h3>
+      <p class="note">왼쪽에서 요소를 삽입하고 캔버스에서 끌어 옮기거나 핸들로 크기를 바꿉니다. 위치와 크기는 px 또는 부모 기준 %로 지정할 수 있습니다.</p>
+      <p class="note">단축키 — Delete 삭제 · Ctrl+D 복제 · Ctrl+Z / Ctrl+Shift+Z 되돌리기·다시 · 방향키 1px 이동(Shift 10px) · Shift/Ctrl+클릭 다중 선택 · Ctrl+A 전체 선택 · Esc 선택 해제</p>
+      <p class="note">레이어의 자물쇠로 잠그면 캔버스에서 클릭·이동되지 않습니다. 눈 아이콘은 표시 여부를 바꿉니다.</p>
+    </div>`;
+    return;
+  }
+  const p = n.props, t = TYPES[n.type];
+  const excl = new Set([n.id, ...descendants(n.id)]);
+  const parents = [`<option value="">페이지</option>`]
+    .concat(state.project.nodes.filter(x => !excl.has(x.id) && TYPES[x.type].container).map(x => `<option value="${x.id}"${x.id===n.parent?" selected":""}>${esc(x.props.name)} (${TYPES[x.type].label})</option>`));
+  const g9 = [[0,0],[.5,0],[1,0],[0,.5],[.5,.5],[1,.5],[0,1],[.5,1],[1,1]]
+    .map(([x,y]) => `<button type="button" data-align="${x},${y}" style="--x:${x};--y:${y}" title="부모 안에서 정렬 ${x}, ${y}"></button>`).join("");
+  let h = (state.sels.length > 1 ? `<p class="note" style="padding-top:10px">${state.sels.length}개 선택됨 · 아래 속성은 마지막으로 선택한 <b style="color:var(--accent)">${esc(p.name)}</b>에만 적용됩니다. 이동·복제·삭제는 선택한 전체에 적용됩니다.</p>` : "")
+  + `<div class="sec"><h3>기본 <span class="cls" style="text-transform:none;letter-spacing:0">${t.label}</span></h3>
+    ${row("이름", txtI("name", p.name))}
+    ${row("부모", `<select id="p-parent" data-prop="parent" data-kind="parent">${parents.join("")}</select>`)}
+    ${row("표시", boolI("visible", p.visible))}
+    ${row("잠금", boolI("locked", p.locked, 'data-rerender="1"'))}
+  </div>
+  <div class="sec"><h3>위치 · 크기</h3>
+    ${row("X", unitI("x", p.x, p.xu))}
+    ${row("Y", unitI("y", p.y, p.yu))}
+    ${row("너비", unitI("w", p.w, p.wu))}
+    ${row("높이", unitI("h", p.h, p.hu))}
+    ${row("회전 (deg)", numI("rotation", p.rotation, 1))}
+    ${row("불투명도", alphaI("opacity", p.opacity))}
+    ${row("부모 안 정렬", `<div class="grid9">${g9}</div>`)}
+  </div>
+  <div class="sec"><h3>채우기</h3>
+    ${row("색", colI("fill", p.fill))}
+    ${row("불투명도", alphaI("fillAlpha", p.fillAlpha))}
+  </div>
+  <div class="sec"><h3>모서리 · 테두리</h3>
+    ${n.type === "ellipse" ? "" : row("모서리 (px)", numI("radius", p.radius, 1, 'min="0"'))}
+    ${row("두께 (px)", numI("borderWidth", p.borderWidth, 1, 'min="0" data-rerender="1"'))}
+    ${p.borderWidth > 0 ? row("스타일", enumI("borderStyle", p.borderStyle, [["solid","실선"],["dashed","파선"],["dotted","점선"],["double","이중선"]])) + row("색", colI("borderColor", p.borderColor)) : ""}
+  </div>
+  <div class="sec"><h3>그림자</h3>
+    ${row("사용", boolI("shadowOn", p.shadowOn, 'data-rerender="1"'))}
+    ${p.shadowOn ? row("X / Y", `<div class="ud">${numI("shadowX", p.shadowX, 1)}${numI("shadowY", p.shadowY, 1)}</div>`)
+      + row("흐림 / 확산", `<div class="ud">${numI("shadowBlur", p.shadowBlur, 1, 'min="0"')}${numI("shadowSpread", p.shadowSpread, 1)}</div>`)
+      + row("색", colI("shadowColor", p.shadowColor)) + row("불투명도", alphaI("shadowAlpha", p.shadowAlpha)) : ""}
+  </div>`;
+  if(t.container) h += `<div class="sec"><h3>레이아웃</h3>${row("넘침 자르기", boolI("clip", p.clip))}</div>`;
+  if(t.text){
+    h += `<div class="sec"><h3>텍스트</h3>
+      ${row("내용", `<textarea id="p-text" data-prop="text" data-kind="text" rows="3">${esc(p.text)}</textarea>`)}
+      ${row("글꼴", enumI("font", p.font, FONTS.map(f => [f, f.replace(/"/g,"")])))}
+      ${row("크기 (px)", numI("fontSize", p.fontSize, 1, 'min="1"'))}
+      ${row("굵기", enumI("fontWeight", p.fontWeight, [[300,"300 Light"],[400,"400 Regular"],[500,"500 Medium"],[600,"600 SemiBold"],[700,"700 Bold"],[900,"900 Black"]]))}
+      ${row("줄 간격", numI("lineHeight", p.lineHeight, 0.05, 'min="0.5"'))}
+      ${row("자간 (px)", numI("letterSpacing", p.letterSpacing, 0.5))}
+      ${row("색", colI("color", p.color))}
+      ${row("가로 정렬", segI("align", p.align, [["left","왼쪽"],["center","가운데"],["right","오른쪽"]]))}
+      ${row("세로 정렬", segI("valign", p.valign, [["top","위"],["center","가운데"],["bottom","아래"]]))}
+    </div>`;
+  }
+  if(t.image){
+    h += `<div class="sec"><h3>이미지</h3>
+      ${row("주소 (URL)", txtI("src", p.src.startsWith("data:") ? "(올린 파일)" : p.src))}
+      ${row("파일", `<label class="btn" for="p-file">파일 선택</label><input type="file" id="p-file" accept="image/*" hidden>`)}
+      ${row("맞춤", enumI("fit", p.fit, [["cover","채우기 (cover)"],["contain","맞추기 (contain)"],["fill","늘이기 (fill)"]]))}
+      <p class="note">올린 파일은 프로젝트 안에 함께 저장됩니다. 큰 이미지는 브라우저 저장 용량을 많이 차지합니다.</p>
+    </div>`;
+  }
+  el.innerHTML = h;
+}
+
+let focusSnap = null;
+const propsEl = () => $("props");
+function applyField(t){
+  const n = get(state.sel);
+  const scope = t.dataset.scope === "page" ? state.project.page : n && n.props;
+  if(!scope) return false;
+  const k = t.dataset.kind, p = t.dataset.prop;
+  if(k === "num"){
+    let v = parseFloat(t.value); if(isNaN(v)) return false;
+    if(t.min !== "") v = Math.max(+t.min, v); if(t.max !== "") v = Math.min(+t.max, v);
+    scope[p] = v;
+  } else if(k === "text"){ if(p === "src" && t.value === "(올린 파일)") return false; scope[p] = t.value; }
+  else if(k === "color"){
+    let v = t.value.trim(); if(v[0] !== "#") v = "#" + v;
+    if(!/^#[0-9a-f]{6}$/i.test(v)) return false;
+    scope[p] = v.toLowerCase();
+    propsEl().querySelectorAll(`[data-prop="${p}"][data-kind="color"]`).forEach(o => { if(o !== t) o.value = v.toLowerCase(); });
+  }
+  else if(k === "bool"){ scope[p] = t.checked; }
+  else if(k === "enum"){ scope[p] = /^\d+$/.test(t.value) ? +t.value : t.value; }
+  else if(k === "unit"){
+    const ax = t.dataset.axis, nu = t.value; if(scope[p] === nu) return false;
+    computeLayout();
+    const dim = (ax === "x" || ax === "w") ? parentRect(n).w : parentRect(n).h;
+    const px = len(scope[ax], scope[p], dim);
+    scope[ax] = nu === "%" ? r3(px/(dim||1)*100) : Math.round(px);
+    scope[p] = nu;
+  }
+  else if(k === "parent"){
+    const np = t.value || null; if(np === n.parent) return false;
+    // 화면상 위치를 유지하도록 새 부모 기준 px 좌표로 다시 계산한다
+    computeLayout();
+    const r = geo.L[n.id], npr = np ? geo.L[np] : geo.root;
+    const arr = state.project.nodes, ids = [n.id, ...descendants(n.id)], moving = ids.map(get);
+    moving.forEach(m => arr.splice(arr.indexOf(m), 1));
+    n.parent = np; arr.push(...moving);
+    Object.assign(n.props, {x:Math.round(r.x - npr.x), xu:"px", y:Math.round(r.y - npr.y), yu:"px"});
+  }
+  return true;
+}
+
+export function initProps(){
+  view.props = renderProps;
+  const el = propsEl();
+  el.addEventListener("focusin", () => { focusSnap = snapshot(); });
+  el.addEventListener("input", e => {
+    const t = e.target; if(!t.dataset.prop || t.dataset.kind === "parent" || t.dataset.kind === "unit") return;
+    if(applyField(t)){ t.dataset.scope === "page" ? renderCanvas() : refreshNodes([state.sel]); if(["name","visible","locked"].includes(t.dataset.prop)) view.tree(); view.status(); }
+  });
+  el.addEventListener("change", e => {
+    const t = e.target;
+    if(t.id === "p-file"){ loadFile(t); return; }
+    if(!t.dataset.prop) return;
+    applyField(t);
+    if(focusSnap) pushHistory(focusSnap);
+    focusSnap = snapshot();
+    renderCanvas(); view.tree(); view.status(); autosave();
+    if(t.dataset.rerender || ["unit","parent"].includes(t.dataset.kind)) renderProps();
+  });
+  el.addEventListener("click", e => {
+    const a = e.target.closest("[data-align]"), sg = e.target.closest("[data-seg]");
+    const n = get(state.sel); if(!n) return;
+    if(sg){ commit(() => n.props[sg.dataset.seg] = sg.dataset.val); return; }
+    if(a){
+      const [fx, fy] = a.dataset.align.split(",").map(Number);
+      computeLayout();
+      const pr = parentRect(n), r = geo.L[n.id], p = n.props;
+      commit(() => {
+        const x = (pr.w - r.w)*fx, y = (pr.h - r.h)*fy;
+        p.x = p.xu === "%" ? r3(x/pr.w*100) : Math.round(x);
+        p.y = p.yu === "%" ? r3(y/pr.h*100) : Math.round(y);
+      });
+    }
+  });
+}
+
+function loadFile(input){
+  const f = input.files[0], n = get(state.sel); if(!f || !n) return;
+  const rd = new FileReader();
+  rd.onload = () => { commit(() => n.props.src = rd.result); toast("이미지를 넣었습니다"); };
+  rd.readAsDataURL(f);
+}
