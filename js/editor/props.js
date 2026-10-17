@@ -4,6 +4,7 @@ import { renderCanvas, refreshNodes, computeLayout, parentRect, len } from "./ca
 import { group, ungroup, align, distribute } from "./edit.js";
 import { icon } from "./icons.js";
 import { PRESETS, PRESET, EASINGS, newAnim, normAnim } from "../fx/presets.js";
+import { EFFECTS, EFFECT, newFx, normFx } from "../fx/vfx.js";
 
 // 애니메이션 한 개의 설정 카드. 입력의 data-anim으로 몇 번째 애니메이션인지 구분한다.
 function animCard(raw, i){
@@ -24,6 +25,26 @@ function animCard(raw, i){
     ${row("속도", num("speed", a.speed, 0.25, 'min="0.1" max="5"'))}
     ${row("시작·끝 상태", sel("fill", a.fill, [["none","원래 상태"],["both","시작 전·끝난 뒤 유지"],["backwards","시작 전 첫 상태"],["forwards","끝난 뒤 마지막 상태"]]))}
     ${p.color ? row("색", `<input type="color" id="${id("color")}-c" data-prop="color" data-kind="color" ${A} value="${a.color}"><input type="text" id="${id("color")}" data-prop="color" data-kind="color" ${A} value="${a.color}" spellcheck="false">`) : ""}
+  </div>`;
+}
+
+// VFX 한 개의 설정 카드. 입력의 data-fx로 몇 번째 효과인지 구분한다.
+function fxCard(raw, i){
+  const f = normFx(raw), e = EFFECT[f.effect], A = `data-fx="${i}"`;
+  const id = k => `v${i}-${k}`;
+  const num = (k, v, step, extra="") => `<input type="number" id="${id(k)}" data-prop="${k}" data-kind="num" ${A} step="${step}" value="${v}" ${extra}>`;
+  const opts = EFFECTS.map(x => `<option value="${x.id}"${x.id === f.effect ? " selected" : ""}>${esc(x.cat)} · ${esc(x.name)}</option>`).join("");
+  return `<div class="anim-card fx-card">
+    <div class="anim-head"><b>${esc(e.name)}</b><small>${esc(e.cat)}</small><button type="button" class="ib" data-fx-del="${i}" title="이 효과 삭제" aria-label="이 효과 삭제">${icon("close")}</button></div>
+    ${row("효과", `<select id="${id("effect")}" data-prop="effect" data-kind="enum" ${A} data-rerender="1">${opts}</select>`)}
+    ${row("지속 (ms)", num("duration", f.duration, 50, 'min="1"'))}
+    ${row("지연 (ms)", num("delay", f.delay, 50, 'min="0"'))}
+    ${row("반복 (0=무한)", num("iterations", f.iterations, 1, 'min="0"'))}
+    ${row("강도", num("intensity", f.intensity, 0.1, 'min="0" max="3"'))}
+    ${row("속도", num("speed", f.speed, 0.25, 'min="0.1" max="5"'))}
+    ${e.density ? row("밀도", num("density", f.density, 0.25, 'min="0" max="4"')) : ""}
+    ${e.color ? row(e.cat === "파괴" ? "색 (채우기 없을 때)" : "색", `<input type="color" id="${id("color")}-c" data-prop="color" data-kind="color" ${A} value="${f.color}"><input type="text" id="${id("color")}" data-prop="color" data-kind="color" ${A} value="${f.color}" spellcheck="false">`) : ""}
+    ${e.density || e.cat === "글리치" || e.cat === "파괴" || e.id === "staticNoise" ? row("배치", `<button class="btn" type="button" data-cmd="reseed" data-fx="${i}">무작위 다시 배치</button>`) : ""}
   </div>`;
 }
 
@@ -147,7 +168,12 @@ function renderProps(){
   h += `<div class="sec"><h3>애니메이션 <small style="text-transform:none;letter-spacing:0">${(p.anims||[]).length}개</small></h3>
     ${(p.anims||[]).map(animCard).join("")}
     <div class="conv"><button class="btn" type="button" data-cmd="addAnim">${icon("plus")}애니메이션 추가</button></div>
-    <p class="note">여러 개를 넣으면 같은 속성(예: 위치·크기)은 아래쪽 애니메이션이 우선합니다. 하단 타임라인에서 재생해 확인하세요.</p>
+    <p class="note">여러 개를 넣으면 같은 속성(예: 위치·크기)은 아래쪽 애니메이션이 우선합니다. 위쪽 타임라인에서 재생해 확인하세요.</p>
+  </div>`;
+  h += `<div class="sec"><h3>VFX <small style="text-transform:none;letter-spacing:0">${(p.fx||[]).length}개</small></h3>
+    ${(p.fx||[]).map(fxCard).join("")}
+    <div class="conv"><button class="btn" type="button" data-cmd="addFx">${icon("plus")}VFX 추가</button></div>
+    <p class="note">편집 중에는 효과의 한 장면만 멈춰 보입니다. 파괴처럼 요소 자체가 바뀌는 효과는 타임라인에서 재생할 때 나타납니다.</p>
   </div>`;
   if(t.image){
     h += `<div class="sec"><h3>이미지</h3>
@@ -167,12 +193,18 @@ function applyField(t){
   const n = get(state.sel);
   let scope = t.dataset.scope === "page" ? state.project.page : n && n.props;
   if(scope && t.dataset.anim !== undefined){ scope.anims[+t.dataset.anim] = normAnim(scope.anims[+t.dataset.anim]); scope = scope.anims[+t.dataset.anim]; }
+  if(scope && t.dataset.fx !== undefined){ scope.fx[+t.dataset.fx] = normFx(scope.fx[+t.dataset.fx]); scope = scope.fx[+t.dataset.fx]; }
   if(!scope) return false;
   const k = t.dataset.kind, p = t.dataset.prop;
   // 효과를 바꾸면 그 효과의 기본 타이밍으로 맞추고 지연·강도·속도·색은 유지한다
   if(t.dataset.anim !== undefined && p === "preset"){
     const keep = {delay:scope.delay, intensity:scope.intensity, speed:scope.speed, color:scope.color};
     Object.assign(scope, newAnim(t.value), keep); return true;
+  }
+  // VFX 종류를 바꾸면 그 효과의 기본값으로 맞추고 지연·강도·속도·밀도·배치는 유지한다
+  if(t.dataset.fx !== undefined && p === "effect"){
+    const keep = {delay:scope.delay, intensity:scope.intensity, speed:scope.speed, density:scope.density, seed:scope.seed};
+    Object.assign(scope, newFx(t.value), keep); return true;
   }
   if(k === "num"){
     let v = parseFloat(t.value); if(isNaN(v)) return false;
@@ -214,7 +246,7 @@ export function initProps(){
   el.addEventListener("focusin", () => { focusSnap = snapshot(); });
   el.addEventListener("input", e => {
     const t = e.target; if(!t.dataset.prop || t.dataset.kind === "parent" || t.dataset.kind === "unit") return;
-    if(applyField(t)){ t.dataset.scope === "page" ? renderCanvas() : refreshNodes([state.sel]); if(["name","visible","locked"].includes(t.dataset.prop)) view.tree(); if(t.dataset.anim !== undefined) view.timeline(); view.status(); }
+    if(applyField(t)){ t.dataset.scope === "page" ? renderCanvas() : refreshNodes([state.sel]); if(["name","visible","locked"].includes(t.dataset.prop)) view.tree(); if(t.dataset.anim !== undefined || t.dataset.fx !== undefined) view.timeline(); view.status(); }
   });
   el.addEventListener("change", e => {
     const t = e.target;
@@ -234,7 +266,15 @@ export function initProps(){
     if(al){ const k = al.dataset.al; k === "dh" ? distribute("h") : k === "dv" ? distribute("v") : align(k); return; }
     const del = e.target.closest("[data-anim-del]");
     if(del){ commit(() => n.props.anims.splice(+del.dataset.animDel, 1)); return; }
-    if(cmd){ const c = cmd.dataset.cmd; c === "group" ? group() : c === "ungroup" ? ungroup() : view.showView("motion"); return; }
+    const fdel = e.target.closest("[data-fx-del]");
+    if(fdel){ commit(() => n.props.fx.splice(+fdel.dataset.fxDel, 1)); return; }
+    if(cmd){
+      const c = cmd.dataset.cmd;
+      if(c === "group") group(); else if(c === "ungroup") ungroup();
+      else if(c === "addAnim") view.showView("motion"); else if(c === "addFx") view.showView("fx");
+      else if(c === "reseed") commit(() => { const f = n.props.fx[+cmd.dataset.fx]; if(f) f.seed = Math.floor(Math.random()*1e9); });
+      return;
+    }
     if(sg){ commit(() => n.props[sg.dataset.seg] = sg.dataset.val); return; }
     if(a){
       const [fx, fy] = a.dataset.align.split(",").map(Number);

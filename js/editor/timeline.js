@@ -1,6 +1,7 @@
 /* 하단 타임라인: 재생 제어 · 눈금 · 애니메이션 트랙 · 재생 위치 탐색 */
 import { state, view, $, esc, get, select } from "../core/state.js";
 import { PRESET, endTime, normAnim } from "../fx/presets.js";
+import { EFFECT, fxEnd, normFx } from "../fx/vfx.js";
 import { player, range, toggle, stop, seek, setRate } from "../fx/engine.js";
 import { icon } from "./icons.js";
 
@@ -24,15 +25,16 @@ function renderTimeline(){
   const R = range(); lastRange = R;
   renderRuler(R);
   const rows = [];
+  const row = (n, name, a, end, cls) => {
+    const left = a.delay / R * 100, width = isFinite(end) ? (end - a.delay) / R * 100 : 100 - left;
+    rows.push(`<div class="tl-row${state.sels.includes(n.id) ? " on" : ""}" data-id="${n.id}">
+      <div class="tl-label" title="${esc(n.props.name)} · ${esc(name)}"><span>${esc(n.props.name)}</span><small>${esc(name)}</small></div>
+      <div class="tl-lane"><div class="tl-bar${cls}${isFinite(end) ? "" : " inf"}" style="left:${left}%;width:${Math.max(.5, width)}%" title="${esc(name)} · ${a.delay}ms 지연 · ${a.duration}ms${a.iterations > 0 ? " × " + a.iterations : " 무한 반복"}"></div></div>
+    </div>`);
+  };
   for(const n of state.project.nodes){
-    (n.props.anims || []).forEach((raw, i) => {
-      const a = normAnim(raw), p = PRESET[a.preset], end = endTime(a);
-      const left = a.delay / R * 100, width = isFinite(end) ? (end - a.delay) / R * 100 : 100 - left;
-      rows.push(`<div class="tl-row${state.sels.includes(n.id) ? " on" : ""}" data-id="${n.id}">
-        <div class="tl-label" title="${esc(n.props.name)} · ${esc(p.name)}"><span>${esc(n.props.name)}</span><small>${esc(p.name)}</small></div>
-        <div class="tl-lane"><div class="tl-bar${isFinite(end) ? "" : " inf"}" style="left:${left}%;width:${Math.max(.5, width)}%" title="${esc(p.name)} · ${a.delay}ms 지연 · ${a.duration}ms${a.iterations > 0 ? " × " + a.iterations : " 무한 반복"}"></div></div>
-      </div>`);
-    });
+    (n.props.anims || []).forEach(raw => { const a = normAnim(raw); row(n, PRESET[a.preset].name, a, endTime(a), ""); });
+    (n.props.fx || []).forEach(raw => { const f = normFx(raw); row(n, "VFX · " + EFFECT[f.effect].name, f, fxEnd(f), " fx"); });
   }
   $("tlRows").innerHTML = rows.join("");
   $("tlEmpty").hidden = rows.length > 0;
