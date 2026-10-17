@@ -1,12 +1,6 @@
 /* 왼쪽 패널: 요소 삽입 · 레이어 트리 */
 import { TYPES, state, view, $, esc, get, kidsMap, descendants, isLocked, topSel, select, commit, newId, node, uniqueName } from "../core/state.js";
-
-const ICON = {
-  eye:'<svg viewBox="0 0 16 16"><path d="M1.5 8s2.4-4.5 6.5-4.5S14.5 8 14.5 8s-2.4 4.5-6.5 4.5S1.5 8 1.5 8z"/><circle cx="8" cy="8" r="2"/></svg>',
-  eyeOff:'<svg viewBox="0 0 16 16"><path d="M2 2l12 12M6.6 3.7A6.4 6.4 0 0 1 8 3.5c4.1 0 6.5 4.5 6.5 4.5a11 11 0 0 1-1.9 2.4M4.1 5A11 11 0 0 0 1.5 8S3.9 12.5 8 12.5a6 6 0 0 0 2.6-.6"/></svg>',
-  lock:'<svg viewBox="0 0 16 16"><rect x="3.5" y="7" width="9" height="6.5" rx="1"/><path d="M5.5 7V5a2.5 2.5 0 0 1 5 0v2"/></svg>',
-  unlock:'<svg viewBox="0 0 16 16"><rect x="3.5" y="7" width="9" height="6.5" rx="1"/><path d="M5.5 7V5a2.5 2.5 0 0 1 4.8-1"/></svg>'
-};
+import { icon } from "./icons.js";
 
 // 선택한 요소가 컨테이너면 그 안에, 아니면 같은 부모에 삽입한다
 function insertParent(){
@@ -15,7 +9,7 @@ function insertParent(){
   return TYPES[n.type].container ? n.id : n.parent;
 }
 function renderInsert(){
-  $("insert").innerHTML = Object.keys(TYPES).map(k => `<button type="button" data-type="${k}"><span class="cls">${TYPES[k].abbr}</span>${TYPES[k].label}</button>`).join("");
+  $("insert").innerHTML = Object.keys(TYPES).map(k => `<button type="button" data-type="${k}" title="${TYPES[k].label} 넣기" aria-label="${TYPES[k].label} 넣기">${icon(k)}<span>${TYPES[k].label}</span></button>`).join("");
 }
 function updateInsertHint(){
   const pid = insertParent(), p = get(pid);
@@ -24,13 +18,13 @@ function updateInsertHint(){
 
 function renderTree(){
   const km = kidsMap();
-  let h = `<div class="node${state.sel?"":" on"}" data-id=""><span class="cls">Pg</span><span class="nm">페이지</span></div>`;
+  let h = `<div class="node${state.sel?"":" on"}" data-id="">${icon("page","ic ty")}<span class="nm">페이지</span></div>`;
   (function w(pid, depth){
     for(const n of km[pid]||[]){
       const p = n.props;
-      h += `<div class="node${state.sels.includes(n.id)?" on":""}${p.visible?"":" off"}${isLocked(n)?" lk":""}" data-id="${n.id}" style="padding-left:${8+depth*14}px"><span class="cls">${TYPES[n.type].abbr}</span><span class="nm">${esc(p.name)}</span>`
-        + `<button type="button" class="tg${p.locked?" set":""}" data-tg="locked" title="${p.locked?"잠금 해제":"잠금"}" aria-label="${p.locked?"잠금 해제":"잠금"}">${p.locked?ICON.lock:ICON.unlock}</button>`
-        + `<button type="button" class="tg${p.visible?"":" set"}" data-tg="visible" title="${p.visible?"숨기기":"보이기"}" aria-label="${p.visible?"숨기기":"보이기"}">${p.visible?ICON.eye:ICON.eyeOff}</button></div>`;
+      h += `<div class="node${state.sels.includes(n.id)?" on":""}${p.visible?"":" off"}${isLocked(n)?" lk":""}" data-id="${n.id}" style="padding-left:${8+depth*14}px">${icon(n.type,"ic ty")}<span class="nm">${esc(p.name)}</span>`
+        + `<button type="button" class="tg${p.locked?" set":""}" data-tg="locked" title="${p.locked?"잠금 해제":"잠금"}" aria-label="${p.locked?"잠금 해제":"잠금"}">${icon(p.locked?"lock":"unlock")}</button>`
+        + `<button type="button" class="tg${p.visible?"":" set"}" data-tg="visible" title="${p.visible?"숨기기":"보이기"}" aria-label="${p.visible?"숨기기":"보이기"}">${icon(p.visible?"eye":"eyeOff")}</button></div>`;
       w(n.id, depth+1);
     }
   })("_", 1);
