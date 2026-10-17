@@ -38,7 +38,12 @@ async function openPage(width, height){
   await pg.waitForFunction(() => document.querySelector("#tree .node"));
   return {pg, errs, ctx};
 }
-const LIBS = {shape:["#shapeLib", 113], ornament:["#decoLib", 102], component:["#cmpLib", 100], motion:["#animLib", 200], fx:["#fxLib", 400]};
+// 라이브러리 항목 수는 정의 모듈에서 직접 센다 (항목을 늘려도 점검을 고칠 필요가 없다)
+const LIBS = await (async () => {
+  const n = async (f, k) => (await import(path.join(ROOT, f))) [k].length;
+  return {shape:["#shapeLib", await n("js/shapes/shapes.js", "SHAPES")], ornament:["#decoLib", await n("js/shapes/ornaments.js", "ORNAMENTS")],
+    component:["#cmpLib", await n("js/components/components.js", "COMPONENTS")], motion:["#animLib", await n("js/fx/presets.js", "PRESETS")], fx:["#fxLib", await n("js/fx/vfx.js", "EFFECTS")]};
+})();
 
 /* ---------- 데스크톱 ---------- */
 {

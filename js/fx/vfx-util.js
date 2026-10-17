@@ -41,3 +41,29 @@ export function perimeter(w, h, inset = 0){
 export const ANGLE = "--vfx-a";
 export const ANGLE_RULE = `@property ${ANGLE}{syntax:"<angle>";inherits:false;initial-value:0deg}`;
 export function registerAngle(){ try{ CSS.registerProperty({name:ANGLE, syntax:"<angle>", inherits:false, initialValue:"0deg"}); }catch(e){} }
+
+/* ---------- 우주·신성·시스템 효과에서 함께 쓰는 도구 ---------- */
+export const SKY = "#8fd3ff", DEEP = "#3d6bff", PALE = "#dff3ff";
+export const SCREEN = "mix-blend-mode:screen";
+// 마스크 (접두어 포함)
+export const msk = g => `-webkit-mask-image:${g};mask-image:${g}`;
+// 원 둘레의 띠만 남기는 원형 그라디언트 (closest-side 기준 a%~b%)
+export const ringG = (a, b, s = .6) => `radial-gradient(closest-side,transparent ${a}%,#000 ${f2(a + s)}%,#000 ${f2(b - s)}%,transparent ${b}%)`;
+// 두 % 좌표 사이 선의 길이(px)와 각도(도). 요소 크기를 알아야 한다.
+export const span = (c, x1, y1, x2, y2) => { const dx = (x2 - x1) / 100 * c.w, dy = (y2 - y1) / 100 * c.h; return {len:f2(Math.hypot(dx, dy)), ang:f2(Math.atan2(dy, dx) * 180 / Math.PI)}; };
+// 0~1 구간을 n등분한 키프레임
+export const turn = (n, fn) => Array.from({length:n + 1}, (_, k) => ({offset:f2(k / n), ...fn(k / n)}));
+// 작은 별 n개를 배경 하나에 그린다. 흰색·주 색·따뜻한 흰색이 섞여 실제 밤하늘처럼 보인다.
+export function starBg(r, n, col, I, big = 1){
+  const out = [];
+  for(let i = 0; i < n; i++){
+    const x = f2(r()*100), y = f2(r()*100), s = f2((.35 + r()*r()*1.2) * big), a = Math.min(1, (.45 + r()*.55) * Math.min(I, 1.4));
+    const k = r(), tint = k < .55 ? "#ffffff" : k < .85 ? col : "#fff1d6";
+    out.push(`radial-gradient(circle at ${x}% ${y}%,${hexA(tint, a)} 0 ${s}px,${hexA(tint, a*.3)} ${f2(s*1.8)}px,transparent ${f2(s*3)}px)`);
+  }
+  return out.join(",");
+}
+// 망원경 사진의 밝은 별: 빛 번짐과 십자 회절선
+export const spike = (col, a) => `radial-gradient(circle,#fff 0 5%,${hexA(col, a)} 11%,${hexA(col, a*.3)} 24%,transparent 46%),linear-gradient(90deg,transparent,${hexA(col, a*.85)} 50%,transparent) center/100% 1.5px no-repeat,linear-gradient(transparent,${hexA(col, a*.85)} 50%,transparent) center/1.5px 100% no-repeat`;
+// 선 그림 SVG에 번짐(글로우)을 입힌다
+export const glowSvg = (vb, col, inner, sw = 1, blur = 2.2) => `<svg xmlns='http://www.w3.org/2000/svg' viewBox='${vb}'><defs><filter id='g' x='-20%' y='-20%' width='140%' height='140%'><feGaussianBlur stdDeviation='${blur}' result='b'/><feMerge><feMergeNode in='b'/><feMergeNode in='b'/><feMergeNode in='SourceGraphic'/></feMerge></filter></defs><g fill='none' stroke='${col}' stroke-width='${sw}' stroke-linecap='round' stroke-linejoin='round' filter='url(#g)'>${inner}</g></svg>`;
