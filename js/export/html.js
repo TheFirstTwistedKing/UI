@@ -6,6 +6,8 @@ import { ANGLE, ANGLE_RULE } from "../fx/vfx-util.js";
 import { shapeOf, shapeFill, shapeShadow } from "../shapes/shapes.js";
 import { ornamentOf, ornColor, ORN_CSS } from "../shapes/ornaments.js";
 import { boxLook } from "../core/styles.js";
+import { TRIGGER } from "../core/interact.js";
+import { RUNTIME_SRC } from "./runtime.js";
 
 const escH = s => String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const num = v => String(+(+v).toFixed(3));
@@ -155,6 +157,20 @@ export function exportHTML(){
   return lines.join("\n");
 }
 
+// 인터랙션 실행 코드 설정: 켠 모드의 트리거만 넣는다. 동작도 없고 화면 입력(CLI·AUI)도 없으면 스크립트를 넣지 않는다.
+export function interactionConfig(){
+  const P = state.project, cls = classNames(P.nodes), modes = P.page.modes || ["gui"], acts = [], disp = {};
+  for(const n of P.nodes) for(const x of n.props.actions || []){
+    const tr = TRIGGER[x.on]; if(!tr || !modes.includes(tr.mode)) continue;
+    const tn = x.t && P.nodes.find(m => m.id === x.t), tgt = tn || n;
+    if(x.t && !tn) continue; // 지워진 대상
+    acts.push({s:"." + cls[n.id], on:x.on, v:x.v || "", do:x.do, t:"." + cls[tgt.id], a:x.a || ""});
+    disp["." + cls[tgt.id]] = TYPES[tgt.type].text ? "flex" : "block";
+  }
+  return acts.length || modes.some(m => m === "cli" || m === "aui") ? {modes, acts, disp} : null;
+}
+const scriptTag = cfg => cfg ? `\n<script>\n(${RUNTIME_SRC})(${JSON.stringify(cfg).replace(/</g, "\\u003c")});\n</script>` : "";
+
 // Google Fonts에서 글꼴마다 제공하는 굵기 (없는 굵기를 요청하면 전체 요청이 실패한다)
 const FONT_WEIGHTS = {"IBM Plex Sans KR":[300,400,500,600,700], "Noto Sans KR":[300,400,500,700,900], "Montserrat":[300,400,500,600,700,900], "Inter":[300,400,500,600,700,900],
   "JetBrains Mono":[400,500,700], "Orbitron":[400,500,700,900], "Cinzel":[400,600,700], "Noto Serif KR":[400,700]};
@@ -182,7 +198,7 @@ ${exportCSS()}
 <body>
   <div class="page">
 ${exportHTML()}
-  </div>
+  </div>${scriptTag(interactionConfig())}
 </body>
 </html>
 `;
