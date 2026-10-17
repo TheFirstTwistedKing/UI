@@ -59,6 +59,19 @@ export function renderCanvas(){
   view.anim();
 }
 export const elementFor = id => elMap[id] || null;
+// 아트보드 배율만 다시 맞춘다 (요소는 그대로 두고 크기·선택 표시만 갱신)
+function fitStage(){
+  if(state.zoom !== "fit" || !geo.root.w) return;
+  const stage = $("stage"), cs = getComputedStyle(stage), W = geo.root.w, H = geo.root.h;
+  const aw = stage.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
+  const ah = stage.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom);
+  const k = Math.max(0.05, Math.min(aw/W, ah/H));
+  if(Math.abs(k - geo.scale) < 1e-4) return;
+  geo.scale = k;
+  $("shot").style.width = W*k + "px"; $("shot").style.height = H*k + "px";
+  $("screen").style.transform = `scale(${k})`;
+  if(ovEl) ovEl.innerHTML = overlayHTML();
+}
 
 // 지정한 요소와 그 자손만 다시 칠한다 (드래그·속성 입력 중 전체 DOM 재생성 방지)
 export function refreshNodes(ids){
@@ -251,6 +264,11 @@ export function initCanvas(){
   });
   $("stage").addEventListener("pointerdown", e => { if(e.target === $("stage") && e.button === 0) select(null); });
   initPan();
-  new ResizeObserver(() => { renderCanvas(); view.status(); }).observe($("stage"));
+  // 패널 크기를 끄는 동안에는 배율만 바꾸고, 멈춘 뒤 한 번 다시 그린다 (매 프레임 전체 재생성 방지)
+  let raf = 0, idle = 0;
+  new ResizeObserver(() => {
+    if(!raf) raf = requestAnimationFrame(() => { raf = 0; fitStage(); view.status(); });
+    clearTimeout(idle); idle = setTimeout(renderCanvas, 180);
+  }).observe($("stage"));
   if(document.fonts) document.fonts.ready.then(() => renderCanvas());
 }

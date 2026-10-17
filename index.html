@@ -34,6 +34,8 @@
         <option value="fit">맞춤</option><option value="0.5">50%</option><option value="0.75">75%</option><option value="1">100%</option>
       </select>
       <label class="ibtn toggle" title="스냅 (px 4단위, % 0.5단위)" data-icon="magnet"><input type="checkbox" id="snap" aria-label="스냅"></label>
+      <button class="ibtn pane" id="paneLeft" type="button" data-icon="paneLeft" title="왼쪽 패널 접기/펼치기" aria-label="왼쪽 패널" aria-pressed="true"></button>
+      <button class="ibtn pane" id="paneRight" type="button" data-icon="paneRight" title="속성 패널 접기/펼치기" aria-label="속성 패널" aria-pressed="true"></button>
     </div>
     <div class="sepv"></div>
     <div class="grp">
@@ -66,6 +68,7 @@
       <div class="tl-empty" id="tlEmpty">애니메이션이나 VFX 탭에서 효과를 골라 요소에 적용하면 여기에 트랙이 생깁니다.</div>
       <div class="tl-headwrap"><div class="playhead" id="playhead" hidden></div></div>
     </div>
+    <div class="rsz h" data-rsz="time" title="끌어서 높이 조절 · 두 번 누르면 접기"></div>
   </section>
   <aside class="left">
     <nav class="rail" role="tablist" aria-label="왼쪽 패널">
@@ -75,6 +78,8 @@
       <button type="button" role="tab" data-view="ornament" data-icon="ornament" title="장식" aria-label="장식"></button>
       <button type="button" role="tab" data-view="motion" data-icon="motion" title="애니메이션" aria-label="애니메이션"></button>
       <button type="button" role="tab" data-view="fx" data-icon="fx" title="VFX" aria-label="VFX"></button>
+      <button type="button" role="tab" data-view="premodel" data-icon="premodel" title="Premodel" aria-label="Premodel"></button>
+      <button type="button" role="tab" data-view="find" data-icon="search" title="에셋 검색" aria-label="에셋 검색"></button>
     </nav>
     <div class="lpanel">
       <section class="view" data-view="layers">
@@ -119,14 +124,26 @@
         <div class="lib" id="fxLib"></div>
         <div class="lib-foot"><p id="fxHint"></p><button class="btn primary" id="fxApply" type="button" disabled>선택한 요소에 적용</button></div>
       </section>
+      <section class="view" data-view="premodel" hidden>
+        <div class="ph">Premodel</div>
+        <div class="pm-soon"><b>미리 만든 모델이 들어올 자리입니다.</b><br>부품마다 따로 편집할 수 있는 완성형 모델을 넣는 탭이며, 아직 들어 있는 모델은 없습니다.
+          <ul><li>시계 (아날로그 · 디지털 · 커스텀)</li><li>게임 HUD · 게이지 · 레이더 · 미니맵</li><li>경고 · 로딩 · 카운트다운 · 정보 표시</li><li>게임 VFX 장치</li></ul></div>
+      </section>
+      <section class="view" data-view="find" hidden>
+        <div class="ph">에셋 검색 <small id="findCount"></small></div>
+        <div class="lib-search"><input type="search" id="findSearch" placeholder="도형·장식·구성 요소·애니메이션·VFX 전체에서 찾기" aria-label="에셋 검색"></div>
+        <div class="find-filter" id="findFilter" role="group" aria-label="종류"></div>
+        <div class="find-list" id="findList"></div>
+      </section>
     </div>
+    <div class="rsz v" data-rsz="left" title="끌어서 너비 조절 · 두 번 누르면 접기"></div>
   </aside>
 
   <main class="stage" id="stage">
     <div class="shot" id="shot"><div class="screen" id="screen"></div></div>
   </main>
 
-  <aside class="right" id="props"></aside>
+  <aside class="right"><div id="props"></div><div class="rsz v" data-rsz="right" title="끌어서 너비 조절 · 두 번 누르면 접기"></div></aside>
 
 
   <footer class="status" id="status"></footer>

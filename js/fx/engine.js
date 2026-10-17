@@ -155,7 +155,7 @@ function attachFxPreview(){
   }
   if(cycle) fxPreviewTimer = setTimeout(attachFxPreview, cycle);
 }
-const SWATCH = {fill:"#e9d8a6", fillAlpha:.22, rotation:0, opacity:1, borderWidth:0};
+const SWATCH = {fill:"#73e2ec", fillAlpha:.22, rotation:0, opacity:1, borderWidth:0};
 export function fxSwatch(el, id){
   if(el._h){ endLive(el._h); clearTimeout(el._t); el._h = null; }
   if(!id) return;

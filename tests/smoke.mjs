@@ -130,6 +130,33 @@ const LIBS = await (async () => {
     E.stop(); ts.sort((a, b) => a - b); return ts[30];
   });
   check("큰 프로젝트: 재생 중 프레임 중앙값 40ms 이내", frames < 40, `${frames.toFixed(1)}ms`);
+
+  // 통합 검색: 결과를 누르면 해당 라이브러리 탭이 열리고 항목이 강조된다
+  await pg.click('.rail [data-view="find"]');
+  await pg.fill("#findSearch", "별");
+  const found = await pg.locator("#findList .find-row").count();
+  await pg.locator("#findList .find-row").first().click();
+  await pg.waitForSelector(".lib-item.flash", {timeout:3000}).catch(() => {});
+  const jumped = await pg.evaluate(() => [document.querySelector('.rail [aria-selected="true"]').dataset.view, !!document.querySelector(".lib-item.flash")]);
+  check("통합 검색: 결과 → 탭 이동과 강조", found > 0 && jumped[0] !== "find" && jumped[1], `${found}건, ${jumped.join(" / ")}`);
+  await pg.click('.rail [data-view="premodel"]');
+  check("Premodel 탭이 열림", await pg.locator('.view[data-view="premodel"]').isVisible());
+
+  // 패널 접기 · 크기 조절 (타임라인 포함)
+  const w = sel => pg.evaluate(s => Math.round(document.querySelector(s).getBoundingClientRect().width), sel);
+  await pg.click("#paneLeft"); await pg.click("#paneRight"); await pg.waitForTimeout(350);
+  const folded = [await w(".left"), await w(".right")];
+  await pg.click("#paneLeft"); await pg.click("#paneRight"); await pg.waitForTimeout(350);
+  const opened = [await w(".left"), await w(".right")];
+  check("왼쪽·오른쪽 패널 접기와 펴기", folded[0] <= 46 && folded[1] <= 2 && opened[0] > 200 && opened[1] > 200, `접음 ${folded} / 폄 ${opened}`);
+  const drag = async (sel, dx, dy) => { const b = await pg.locator(sel).boundingBox(); const x = b.x + b.width/2, y = b.y + b.height/2;
+    await pg.mouse.move(x, y); await pg.mouse.down(); await pg.mouse.move(x + dx, y + dy, {steps:5}); await pg.mouse.up(); };
+  await drag('.rsz[data-rsz="left"]', 80, 0); await drag('.rsz[data-rsz="right"]', -60, 0);
+  const tl0 = await pg.evaluate(() => document.getElementById("tlTrack").offsetHeight);
+  await drag('.rsz[data-rsz="time"]', 0, 50);
+  const tl1 = await pg.evaluate(() => document.getElementById("tlTrack").offsetHeight);
+  const sized = [await w(".left"), await w(".right")];
+  check("끌어서 패널 크기 조절", sized[0] >= opened[0] + 70 && sized[1] >= opened[1] + 50 && tl1 >= tl0 + 40, `왼쪽 ${opened[0]}→${sized[0]}, 오른쪽 ${opened[1]}→${sized[1]}, 타임라인 ${tl0}→${tl1}`);
   check("데스크톱: 스크립트 오류 없음", errs.length === 0, errs.join(" | "));
   await ctx.close();
 }
@@ -146,6 +173,8 @@ const LIBS = await (async () => {
     await pg.waitForFunction(s => document.querySelectorAll(s + " .lib-item").length > 0, sel);
     check(`모바일: ${view} 탭 ${n}종`, await pg.locator(`${sel} .lib-item`).count() === n);
   }
+  await pg.tap('.rail [data-view="find"]'); await pg.fill("#findSearch", "버튼");
+  check("모바일: 통합 검색 결과", await pg.locator("#findList .find-row").count() > 0);
   check("모바일: 탭을 연 뒤에도 가로 스크롤 없음", !(await hscroll()));
   check("모바일: 스크립트 오류 없음", errs.length === 0, errs.join(" | "));
   await ctx.close();
