@@ -47,6 +47,26 @@
     </div>
   </header>
 
+  <section class="timeline" id="timeline" aria-label="타임라인">
+    <div class="tl-head">
+      <button class="ibtn" id="tlPlay" type="button" data-icon="play" title="재생 (Enter)" aria-label="재생"></button>
+      <button class="ibtn" id="tlStop" type="button" data-icon="stop" title="정지하고 처음으로 (Shift+Enter)" aria-label="정지"></button>
+      <span class="tl-time" id="tlTime">00:00.00</span>
+      <select class="sel" id="tlRate" aria-label="재생 속도" title="재생 속도">
+        <option value="0.25">0.25×</option><option value="0.5">0.5×</option><option value="1" selected>1×</option><option value="1.5">1.5×</option><option value="2">2×</option>
+      </select>
+      <label class="ibtn toggle" data-icon="loop" title="반복 재생"><input type="checkbox" id="tlLoop" checked aria-label="반복 재생"></label>
+      <span class="tl-title" data-icon="timeline">타임라인</span>
+      <div class="spacer"></div>
+      <button class="ibtn tl-toggle" id="tlToggle" type="button" data-icon="chevron" title="타임라인 접기/펼치기" aria-label="타임라인 접기/펼치기" aria-expanded="true"></button>
+    </div>
+    <div class="tl-body" id="tlTrack">
+      <div class="tl-rulerrow"><div class="tl-corner"></div><div class="ruler" id="ruler"></div></div>
+      <div class="tl-rows" id="tlRows"></div>
+      <div class="tl-empty" id="tlEmpty">애니메이션 탭에서 효과를 골라 요소에 적용하면 여기에 트랙이 생깁니다.</div>
+      <div class="tl-headwrap"><div class="playhead" id="playhead" hidden></div></div>
+    </div>
+  </section>
   <aside class="left">
     <nav class="rail" role="tablist" aria-label="왼쪽 패널">
       <button type="button" role="tab" data-view="layers" data-icon="layers" title="레이어" aria-label="레이어"></button>
@@ -94,26 +114,6 @@
 
   <aside class="right" id="props"></aside>
 
-  <section class="timeline" id="timeline" aria-label="타임라인">
-    <div class="tl-head">
-      <button class="ibtn" id="tlPlay" type="button" data-icon="play" title="재생 (Enter)" aria-label="재생"></button>
-      <button class="ibtn" id="tlStop" type="button" data-icon="stop" title="정지하고 처음으로 (Shift+Enter)" aria-label="정지"></button>
-      <span class="tl-time" id="tlTime">00:00.00</span>
-      <select class="sel" id="tlRate" aria-label="재생 속도" title="재생 속도">
-        <option value="0.25">0.25×</option><option value="0.5">0.5×</option><option value="1" selected>1×</option><option value="1.5">1.5×</option><option value="2">2×</option>
-      </select>
-      <label class="ibtn toggle" data-icon="loop" title="반복 재생"><input type="checkbox" id="tlLoop" checked aria-label="반복 재생"></label>
-      <span class="tl-title" data-icon="timeline">타임라인</span>
-      <div class="spacer"></div>
-      <button class="ibtn tl-toggle" id="tlToggle" type="button" data-icon="chevron" title="타임라인 접기/펼치기" aria-label="타임라인 접기/펼치기" aria-expanded="true"></button>
-    </div>
-    <div class="tl-body" id="tlTrack">
-      <div class="tl-rulerrow"><div class="tl-corner"></div><div class="ruler" id="ruler"></div></div>
-      <div class="tl-rows" id="tlRows"></div>
-      <div class="tl-empty" id="tlEmpty">애니메이션 탭에서 효과를 골라 요소에 적용하면 여기에 트랙이 생깁니다.</div>
-      <div class="tl-headwrap"><div class="playhead" id="playhead" hidden></div></div>
-    </div>
-  </section>
 
   <footer class="status" id="status"></footer>
 </div>

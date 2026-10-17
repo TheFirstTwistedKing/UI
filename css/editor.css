@@ -39,8 +39,8 @@ button,input,select,textarea{font:inherit;color:inherit}
 ::selection{background:rgba(233,216,166,.3)}
 *{scrollbar-width:thin;scrollbar-color:var(--line-2) transparent}
 
-.app{height:100%;display:grid;grid-template-columns:272px minmax(0,1fr) 300px;grid-template-rows:auto minmax(0,1fr) auto auto;
-  grid-template-areas:"top top top" "left stage right" "time time time" "status status status"}
+.app{height:100%;display:grid;grid-template-columns:272px minmax(0,1fr) 300px;grid-template-rows:auto auto minmax(0,1fr) auto;
+  grid-template-areas:"top top top" "time time time" "left stage right" "status status status"}
 
 /* ---------- 공통 컨트롤 ---------- */
 .btn{display:inline-flex;align-items:center;gap:6px;background:var(--panel-2);border:1px solid var(--line);border-radius:var(--r1);padding:5px 10px;cursor:pointer;white-space:nowrap;
@@ -190,12 +190,14 @@ button,input,select,textarea{font:inherit;color:inherit}
 .note{padding:4px 14px;font-size:var(--t-xs);color:var(--muted);line-height:1.6}
 
 /* ---------- 하단 타임라인 ---------- */
-.timeline{grid-area:time;border-top:1px solid var(--line);background:var(--panel);display:flex;flex-direction:column}
-.tl-head{display:flex;align-items:center;gap:8px;padding:4px 10px;border-bottom:1px solid var(--line)}
+.timeline{grid-area:time;border-bottom:1px solid var(--line);background:var(--panel);display:flex;flex-direction:column}
+.tl-head{display:flex;align-items:center;gap:8px;padding:4px 10px}
+.tl-body{border-top:1px solid var(--line)}
+.timeline.collapsed .tl-body{border-top-color:transparent}
 .tl-time{font-family:var(--f-mono);font-size:var(--t-sm);color:var(--muted);font-variant-numeric:tabular-nums}
 .tl-title{display:inline-flex;align-items:center;gap:6px;font-size:var(--t-xs);letter-spacing:.12em;text-transform:uppercase;color:var(--faint);margin-left:6px}
-.tl-toggle .ic{transition:transform var(--dur) var(--ease)}
-.timeline.collapsed .tl-toggle .ic{transform:rotate(180deg)}
+.tl-toggle .ic{transition:transform var(--dur) var(--ease);transform:rotate(180deg)}
+.timeline.collapsed .tl-toggle .ic{transform:none}
 .tl-body{--lab:168px;height:140px;position:relative;overflow:hidden auto;transition:height .22s var(--ease);user-select:none}
 .timeline.collapsed .tl-body{height:0}
 .tl-rulerrow{display:flex;position:sticky;top:0;z-index:2;background:var(--panel)}
@@ -280,7 +282,7 @@ pre.code{margin:0;background:#030303;border:1px solid var(--line);border-radius:
 }
 @media (max-width:900px){
   body{overflow:auto}
-  .app{height:auto;grid-template-columns:minmax(0,1fr);grid-template-rows:auto 56vh auto auto auto auto;grid-template-areas:"top" "stage" "status" "left" "right" "time"}
+  .app{height:auto;grid-template-columns:minmax(0,1fr);grid-template-rows:auto auto 56vh auto auto auto;grid-template-areas:"top" "time" "stage" "status" "left" "right"}
   .left,.right{border:0;border-top:1px solid var(--line)}
   .left{grid-template-columns:44px minmax(0,1fr)}
   .tree{max-height:260px}
