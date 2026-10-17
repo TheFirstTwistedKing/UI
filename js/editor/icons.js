@@ -32,6 +32,10 @@ const P = {
   ornament:'<path d="M8 1.5v13M1.5 8h13"/><path d="m3.5 3.5 9 9M12.5 3.5l-9 9"/><circle cx="8" cy="8" r="2.5"/>',
   motion:'<path d="M1.5 11c2-6 4-6 6 0s4 6 7-1"/><circle cx="14" cy="5" r="1"/>',
   fx:'<path d="m8 1.5 1.6 4.2 4.4.3-3.4 2.8 1.1 4.2L8 10.6 4.3 13l1.1-4.2L2 6l4.4-.3z"/>',
+  premodel:'<circle cx="8" cy="8" r="6"/><circle cx="8" cy="8" r="3.6" stroke-dasharray="1.4 1.4"/><path d="M8 5.2V8l2 1.3"/>',
+  search:'<circle cx="7" cy="7" r="4.5"/><path d="m10.4 10.4 3.6 3.6"/>',
+  paneLeft:'<rect x="1.5" y="2.5" width="13" height="11" rx="1"/><path d="M6 2.5v11"/><path d="M3 5.5h1.5M3 8h1.5"/>',
+  paneRight:'<rect x="1.5" y="2.5" width="13" height="11" rx="1"/><path d="M10 2.5v11"/><path d="M11.5 5.5H13M11.5 8H13"/>',
   chevron:'<path d="m4.5 6 3.5 3.5L11.5 6"/>',
   timeline:'<path d="M1.5 4.5h13M1.5 8h13M1.5 11.5h13"/><path d="M5 2.5v4M10 6v4M7 9.5v4"/>'
 };

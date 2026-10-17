@@ -10,13 +10,14 @@ import { initTimeline } from "./editor/timeline.js";
 import { initMotion } from "./editor/motion.js";
 import { initShapes } from "./editor/shapes-panel.js";
 import { initComponents } from "./editor/components-panel.js";
+import { initFind } from "./editor/find-panel.js";
 import { attach, refreshPreview, bindElements, toggle as togglePlay, stop as stopPlay } from "./fx/engine.js";
 import { elementFor } from "./editor/canvas.js";
 import { view } from "./core/state.js";
 
-/* ---------- 패널 셸: 왼쪽 탭, 하단 타임라인 ---------- */
+/* ---------- 패널 셸: 왼쪽 탭, 타임라인, 패널 접기·크기 조절 ---------- */
 const UI_KEY = "uiforge.web.ui";
-let ui = {view:"layers", timeline:true};
+let ui = {view:"layers", timeline:true, lcol:false, rcol:false, lw:0, rw:0, tlh:0};
 try{ Object.assign(ui, JSON.parse(localStorage.getItem(UI_KEY)) || {}); }catch(e){}
 const saveUI = () => { try{ localStorage.setItem(UI_KEY, JSON.stringify(ui)); }catch(e){} };
 function showView(v){
@@ -31,11 +32,55 @@ function setTimeline(open){
   document.getElementById("timeline").classList.toggle("collapsed", !open);
   document.getElementById("tlToggle").setAttribute("aria-expanded", open);
 }
+// 접기와 크기 조절은 데스크톱 배치에서만 쓴다 (좁은 화면은 패널을 세로로 쌓는다)
+const DESK = matchMedia("(min-width:901px)");
+const app = () => document.querySelector(".app");
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+function setPane(key, on){
+  ui[key] = on;
+  app().classList.toggle(key, on);
+  document.getElementById(key === "lcol" ? "paneLeft" : "paneRight").setAttribute("aria-pressed", !on);
+}
+function applySizes(){
+  if(ui.lw) app().style.setProperty("--lw", ui.lw + "px");
+  if(ui.rw) app().style.setProperty("--rw", ui.rw + "px");
+  if(ui.tlh) document.getElementById("tlTrack").style.setProperty("--tlh", ui.tlh + "px");
+}
+function initResizers(){
+  document.querySelectorAll(".rsz").forEach(h => {
+    const k = h.dataset.rsz;
+    h.addEventListener("pointerdown", e => {
+      if(e.button !== 0) return;
+      e.preventDefault(); h.setPointerCapture(e.pointerId);
+      const r = app().getBoundingClientRect(), tr = document.getElementById("tlTrack").getBoundingClientRect();
+      app().classList.add("resizing", k === "time" ? "rr" : "cr"); h.classList.add("on");
+      const move = ev => {
+        if(k === "left") ui.lw = clamp(Math.round(ev.clientX - r.left), 200, 520);
+        else if(k === "right") ui.rw = clamp(Math.round(r.right - ev.clientX), 240, 560);
+        else ui.tlh = clamp(Math.round(ev.clientY - tr.top), 60, Math.round(innerHeight * .5));
+        applySizes();
+      };
+      const up = () => { h.removeEventListener("pointermove", move); app().classList.remove("resizing", "rr", "cr"); h.classList.remove("on"); saveUI(); };
+      h.addEventListener("pointermove", move);
+      h.addEventListener("pointerup", up, {once:true}); h.addEventListener("pointercancel", up, {once:true});
+    });
+    h.addEventListener("dblclick", () => { if(k === "time") setTimeline(false); else setPane(k === "left" ? "lcol" : "rcol", true); saveUI(); });
+  });
+}
 function initShell(){
   mountIcons();
   if(!document.querySelector(`.rail [data-view="${ui.view}"]`)) ui.view = "layers";
   showView(ui.view); setTimeline(ui.timeline);
-  document.querySelector(".rail").addEventListener("click", e => { const b = e.target.closest("[data-view]"); if(b && b.dataset.view !== ui.view){ showView(b.dataset.view); saveUI(); } });
+  setPane("lcol", !!ui.lcol); setPane("rcol", !!ui.rcol); applySizes(); initResizers();
+  // 탭을 누르면 그 탭을 연다. 이미 열린 탭을 다시 누르면 왼쪽 패널을 접거나 편다.
+  document.querySelector(".rail").addEventListener("click", e => {
+    const b = e.target.closest("[data-view]"); if(!b) return;
+    if(b.dataset.view !== ui.view){ showView(b.dataset.view); if(ui.lcol) setPane("lcol", false); }
+    else if(DESK.matches) setPane("lcol", !ui.lcol);
+    saveUI();
+  });
+  document.getElementById("paneLeft").onclick = () => { setPane("lcol", !ui.lcol); saveUI(); };
+  document.getElementById("paneRight").onclick = () => { setPane("rcol", !ui.rcol); saveUI(); };
   document.getElementById("tlToggle").onclick = () => { setTimeline(!ui.timeline); saveUI(); };
   // 타임라인 높이가 바뀌면 아트보드 맞춤 배율도 다시 계산된다 (canvas의 ResizeObserver)
 }
@@ -73,6 +118,6 @@ if(prefs){
 // 첫 실행은 빈 캔버스. 이전에 작업하던 프로젝트가 있으면 이어서 연다.
 state.project = validProject(store.current()) || blankProject();
 bindElements(elementFor); view.anim = attach; view.preview = refreshPreview;
-view.showView = v => { showView(v); saveUI(); };
-initShell(); initToolbar(); initCanvas(); initTree(); initProps(); initTimeline(); initMotion(); initShapes(); initComponents();
+view.showView = v => { showView(v); if(ui.lcol) setPane("lcol", false); saveUI(); };
+initShell(); initToolbar(); initCanvas(); initTree(); initProps(); initTimeline(); initMotion(); initShapes(); initComponents(); initFind();
 renderAll();
