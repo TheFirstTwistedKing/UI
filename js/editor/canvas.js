@@ -1,5 +1,5 @@
 /* 아트보드 렌더링 · 선택 오버레이 · 드래그 이동/크기 조절 */
-import { TYPES, state, geo, view, $, esc, r3, get, kidsMap, descendants, isLocked, topSel, select, snapshot, pushHistory, autosave, renderAll } from "../core/state.js";
+import { TYPES, state, geo, view, $, esc, r3, get, rgba, baseTransform, kidsMap, descendants, isLocked, topSel, select, snapshot, pushHistory, autosave, renderAll } from "../core/state.js";
 import { shapeMarkup } from "../shapes/shapes.js";
 import { ornamentMarkup } from "../shapes/ornaments.js";
 import { boxLook } from "../core/styles.js";
@@ -84,6 +84,12 @@ export function refreshNodes(ids){
   view.anim();
 }
 
+// 변형(회전·배율)과 섞기 모드: 모든 유형에 공통
+function common(s, p){
+  const bt = baseTransform(p); if(bt) s.transform = bt;
+  if(p.blend && p.blend !== "normal") s.mixBlendMode = p.blend;
+}
+export const textGlow = p => `0 0 ${p.glowBlur}px ${rgba(p.glowColor, p.glowAlpha)}`;
 function paint(d, n, pr){
   const p = n.props, t = TYPES[n.type], r = geo.L[n.id];
   d.className = "el" + (p.visible ? "" : " hid") + (p.locked ? " lock" : "");
@@ -96,14 +102,15 @@ function paint(d, n, pr){
     // 도형·장식은 SVG가 채우기·선·그림자를 맡고, 상자 자체는 투명하게 둔다
     d.insertAdjacentHTML("afterbegin", t.shape ? shapeMarkup(p) : ornamentMarkup(p));
     if(p.opacity < 1) s.opacity = p.opacity;
-    if(p.rotation) s.transform = `rotate(${p.rotation}deg)`;
+    common(s, p);
     if(p.clip) s.overflow = "hidden";
     return;
   }
   // 채우기·모서리·테두리·그림자는 디자인 스타일 키트까지 합쳐서 계산한다 (내보내기와 같은 함수)
   for(const [k, v] of Object.entries(boxLook(n))) s.setProperty(k, v);
   if(p.opacity < 1) s.opacity = p.opacity;
-  if(p.rotation) s.transform = `rotate(${p.rotation}deg)`;
+  common(s, p);
+  if(t.text && p.glowOn) s.textShadow = textGlow(p);
   if(p.clip) s.overflow = "hidden";
   if(t.text){
     const x = document.createElement("div"); x.className = "tx";
@@ -122,14 +129,16 @@ function paint(d, n, pr){
 }
 
 const boxStyle = (r, rot) => `left:${r.x}px;top:${r.y}px;width:${Math.max(0,r.w)}px;height:${Math.max(0,r.h)}px${rot?`;transform:rotate(${rot}deg)`:""}`;
+// 배율을 적용한 화면상 상자 (가운데 기준으로 커지고 줄어든다)
+const visBox = (r, p) => { const sx = Math.abs(p.scaleX ?? 1), sy = Math.abs(p.scaleY ?? 1); return {x:r.x + r.w*(1-sx)/2, y:r.y + r.h*(1-sy)/2, w:r.w*sx, h:r.h*sy}; };
 function overlayHTML(){
   const n = get(state.sel); if(!n) return "";
-  const r = geo.L[n.id], pr = parentRect(n), p = n.props;
+  const p = n.props, r = visBox(geo.L[n.id], p), pr = parentRect(n);
   const k = 1/geo.scale, hs = 9*k, multi = state.sels.length > 1;
   let h = multi || !n.parent ? "" : `<div class="pbox" style="left:${pr.x}px;top:${pr.y}px;width:${pr.w}px;height:${pr.h}px;border-width:${k}px"></div>`;
   for(const id of state.sels){
     const o = get(id); if(!o || id === n.id) continue;
-    h += `<div class="selbox sub" style="${boxStyle(geo.L[id], o.props.rotation)};border-width:${1.5*k}px"></div>`;
+    h += `<div class="selbox sub" style="${boxStyle(visBox(geo.L[id], o.props), o.props.rotation)};border-width:${1.5*k}px"></div>`;
   }
   h += `<div class="selbox" style="${boxStyle(r, p.rotation)};border-width:${1.5*k}px"></div>`;
   if(!multi && !isLocked(n)){

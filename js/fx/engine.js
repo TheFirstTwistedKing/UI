@@ -44,7 +44,7 @@ function mountAll(){
   for(const n of state.project.nodes){
     const el = elementFor(n.id); if(!el) continue;
     const list = n.props.visible ? n.props.fx || [] : [], r = geo.L[n.id] || {w:100, h:100};
-    const key = JSON.stringify(list) + "|" + Math.round(r.w) + "x" + Math.round(r.h) + "|" + n.props.fill + n.props.fillAlpha + n.props.borderWidth + n.props.rotation + n.props.opacity;
+    const key = JSON.stringify(list) + "|" + Math.round(r.w) + "x" + Math.round(r.h) + "|" + n.props.fill + n.props.fillAlpha + n.props.borderWidth + n.props.rotation + n.props.opacity + "|" + n.props.scaleX + "," + n.props.scaleY;
     if(el._fxKey === key && (!list.length || el.querySelector(":scope > .vfx:not(.pv)"))) continue;
     el.querySelectorAll(":scope > .vfx:not(.pv)").forEach(c => { stopPoster(c); c.remove(); });
     el._fxKey = key;

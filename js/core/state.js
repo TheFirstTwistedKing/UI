@@ -26,10 +26,11 @@ export function renderAll(){ view.toolbar(); view.canvas(); view.tree(); view.pr
 export function makeProps(type){
   const t = TYPES[type];
   const p = {name:t.label, x:40, y:40, xu:"px", yu:"px", w:240, h:140, wu:"px", hu:"px",
-    rotation:0, opacity:1, visible:true, locked:false,
+    rotation:0, scaleX:1, scaleY:1, opacity:1, blend:"normal", visible:true, locked:false,
     fill:"#1c1c1f", fillAlpha:1, radius:0,
     borderWidth:0, borderStyle:"solid", borderColor:"#e9d8a6",
     shadowOn:false, shadowX:0, shadowY:8, shadowBlur:24, shadowSpread:0, shadowColor:"#000000", shadowAlpha:0.5,
+    glowOn:false, glowColor:"#73e2ec", glowBlur:16, glowSpread:0, glowAlpha:0.8,
     clip:false, styleKits:[], actions:[], anims:[], fx:[]};
   if(type === "ellipse") Object.assign(p, {w:160, h:160});
   if(t.shape) Object.assign(p, {w:160, h:160, shape:"star5", fill:"#e9d8a6"});
@@ -66,6 +67,13 @@ export function savePrefs(){ lsSet(LS_PREF, {snap:state.snap, device:state.devic
 export const $ = id => document.getElementById(id);
 export const esc = s => String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 export const r3 = v => Math.round(v*1000)/1000;
+// 요소의 기본 변형(회전 → 배율). 애니메이션 키프레임 앞에도 붙여서 재생 중에도 유지한다.
+export function baseTransform(p){
+  const sx = p.scaleX ?? 1, sy = p.scaleY ?? 1, t = [];
+  if(p.rotation) t.push(`rotate(${r3(p.rotation)}deg)`);
+  if(sx !== 1 || sy !== 1) t.push(sx === sy ? `scale(${r3(sx)})` : `scale(${r3(sx)}, ${r3(sy)})`);
+  return t.join(" ");
+}
 // id → 요소. 배열 위치 색인을 두고, 위치가 어긋나면(추가·삭제·순서 변경·되돌리기) 다시 만든다.
 let idx = null, idxNodes = null;
 export function get(id){

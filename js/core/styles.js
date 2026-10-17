@@ -60,6 +60,8 @@ export function boxLook(n){
       shadows = shadows.filter(s => s.startsWith("inset")).concat("6px 6px 0 0 #000000");
     }
   }
+  // 글로우: 키트와 상관없이 마지막에 더한다 (텍스트는 글자 그림자로 따로 처리)
+  if(p.glowOn && n.type !== "text") shadows.push(`0 0 ${num(p.glowBlur)}px ${num(p.glowSpread)}px ${rgba(p.glowColor, p.glowAlpha)}`);
   const out = {};
   if(images.length) out.background = images.join(",") + (color ? "," + color : "");
   else if(color) out.background = color;

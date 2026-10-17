@@ -131,6 +131,33 @@ const LIBS = await (async () => {
   });
   check("큰 프로젝트: 재생 중 프레임 중앙값 40ms 이내", frames < 40, `${frames.toFixed(1)}ms`);
 
+  // 정밀 편집: 슬라이더·숫자 동기화, HEX/RGB/HSL 입력, 배율, 글로우, 섞기 모드, 쌓는 순서, 키프레임 직접 만들기
+  const pe = await pg.evaluate(async () => {
+    const S = await import("./js/core/state.js");
+    const a = S.node("rect", null, {name:"PeA"}), b = S.node("rect", null, {name:"PeB"});
+    S.commit(() => { S.state.project.nodes.push(a, b); S.state.sel = b.id; S.state.sels = [b.id]; });
+    return b.id;
+  });
+  const setNum = async (sel, v) => { await pg.fill(sel, String(v)); await pg.locator(sel).dispatchEvent("change"); };
+  await setNum("#p-scaleX", 1.5);
+  await pg.fill("#p-fill", "rgb(255, 0, 0)"); await pg.locator("#p-fill").dispatchEvent("change");
+  await pg.check("#p-glowOn"); await pg.locator("#p-glowOn").dispatchEvent("change");
+  await pg.selectOption("#p-blend", "screen");
+  await pg.click('[data-z="back"]');
+  const peR = await pg.evaluate(async id => {
+    const S = await import("./js/core/state.js"), n = S.get(id), el = document.querySelector(`#screen [data-id="${id}"]`), cs = getComputedStyle(el);
+    const sibs = S.state.project.nodes.filter(x => x.parent === null);
+    return {sx:n.props.scaleX, slider:document.getElementById("p-scaleX-r").value, fill:n.props.fill, glow:cs.boxShadow.includes("0px 0px 16px"), blend:cs.mixBlendMode, tf:cs.transform, first:sibs[0].id === id};
+  }, pe);
+  check("정밀 편집: 배율·RGB 입력·글로우·섞기·순서", peR.sx === 1.5 && +peR.slider === 1.5 && peR.fill === "#ff0000" && peR.glow && peR.blend === "screen" && peR.tf.startsWith("matrix(1.5") && peR.first, JSON.stringify(peR));
+  const kf = await pg.evaluate(async id => {
+    const S = await import("./js/core/state.js"), P = await import("./js/fx/presets.js"), H = await import("./js/export/html.js");
+    S.commit(() => { const a = P.newAnim("custom"); a.keys = [{o:0, x:0, y:0, s:1, r:0, op:1}, {o:50, x:40, y:0, s:1.2, r:10, op:1}, {o:100, x:0, y:0, s:1, r:0, op:1}]; S.get(id).props.anims.push(a); });
+    const css = H.exportCSS();
+    return {css:/50%\{[^}]*translate\(40px, 0px\) rotate\(10deg\) scale\(1\.2\)/.test(css), marks:document.querySelectorAll(".tl-kf").length};
+  }, pe);
+  check("키프레임 직접 만들기: 내보내기 · 타임라인 표시", kf.css && kf.marks >= 3, JSON.stringify(kf));
+
   // 디자인 스타일: 키트를 켜고 꺼도 내용과 원래 속성은 그대로이고, 편집기와 내보내기에 같이 반영된다
   const kit = await pg.evaluate(async () => {
     const S = await import("./js/core/state.js"), H = await import("./js/export/html.js");
