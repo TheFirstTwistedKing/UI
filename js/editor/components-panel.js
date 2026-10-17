@@ -1,5 +1,5 @@
 /* 왼쪽 패널 'UI 구성 요소' 탭: 견본을 보고 눌러서 그룹 하나로 넣는다 */
-import { TYPES, state, $, esc, commit, node, uniqueName, toast } from "../core/state.js";
+import { TYPES, state, $, esc, commit, node, uniqueName, toast, onFirstShow } from "../core/state.js";
 import { COMPONENTS, COMPONENT_CATEGORIES, COMPONENT } from "../components/components.js";
 import { shapeMarkup } from "../shapes/shapes.js";
 import { ornamentMarkup } from "../shapes/ornaments.js";
@@ -40,22 +40,19 @@ function thumbHTML(def, W, H){
 
 export function initComponents(){
   const lib = $("cmpLib");
-  let h = "";
-  for(const cat of COMPONENT_CATEGORIES){
-    const items = COMPONENTS.filter(c => c.cat === cat);
-    h += `<div class="lib-cat" data-cat="${cat}">${cat} <small>${items.length}</small></div>`;
-    h += items.map(c => `<button type="button" class="lib-item cmp" data-item="${c.id}" title="${esc(c.name)} 넣기"><span class="sw"></span><span class="nm">${esc(c.name)}</span></button>`).join("");
-  }
-  lib.innerHTML = h;
   $("cmpCount").textContent = COMPONENTS.length + "종";
   $("cmpHint").textContent = "누르면 구성 요소를 그룹으로 넣습니다. 그룹 안의 요소는 레이어에서 하나씩 고쳐 쓸 수 있습니다.";
-  // 견본은 탭이 처음 보일 때 그린다 (목록 폭을 알아야 해서)
-  let drawn = false;
-  const draw = () => {
-    if(drawn || !lib.offsetWidth) return; drawn = true;
+  // 목록과 견본은 탭이 처음 보일 때 만든다 (견본은 목록 폭을 알아야 해서)
+  onFirstShow(lib, () => {
+    let h = "";
+    for(const cat of COMPONENT_CATEGORIES){
+      const items = COMPONENTS.filter(c => c.cat === cat);
+      h += `<div class="lib-cat" data-cat="${cat}">${cat} <small>${items.length}</small></div>`;
+      h += items.map(c => `<button type="button" class="lib-item cmp" data-item="${c.id}" title="${esc(c.name)} 넣기"><span class="sw"></span><span class="nm">${esc(c.name)}</span></button>`).join("");
+    }
+    lib.innerHTML = h;
     lib.querySelectorAll(".lib-item").forEach(b => { const sw = b.querySelector(".sw"); sw.innerHTML = thumbHTML(COMPONENT[b.dataset.item], sw.clientWidth, sw.clientHeight); });
-  };
-  new ResizeObserver(draw).observe(lib);
+  });
   lib.addEventListener("click", e => {
     const b = e.target.closest(".lib-item"); if(!b) return;
     const def = COMPONENT[b.dataset.item], parent = insertParent();

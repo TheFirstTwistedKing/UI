@@ -1,6 +1,6 @@
 /* 왼쪽 패널: 요소 삽입 · 레이어 트리 */
-import { TYPES, state, view, $, esc, get, kidsMap, descendants, isLocked, topSel, select, commit, newId, node, uniqueName } from "../core/state.js";
-import { icon } from "./icons.js";
+import { TYPES, state, view, $, esc, get, kidsMap, descendants, topSel, select, commit, newId, node, uniqueName } from "../core/state.js";
+import { icon, iconRef } from "./icons.js";
 
 // 선택한 요소가 컨테이너면 그 안에, 아니면 같은 부모에 삽입한다
 export function insertParent(){
@@ -16,24 +16,40 @@ function updateInsertHint(){
   $("insHint").innerHTML = p ? `<b style="color:var(--accent)">${esc(p.props.name)}</b> 안에 삽입됩니다.` : `페이지 바로 아래에 삽입됩니다.`;
 }
 
+// 레이어 목록이 화면에 없을 때는 다시 그리지 않고 표시만 해 둔다 (탭을 열 때 그린다)
+let dirty = true;
+const treeShown = () => !$("tree").closest(".view").hidden;
 function renderTree(){
-  const km = kidsMap();
-  let h = `<div class="node${state.sel?"":" on"}" data-id="">${icon("page","ic ty")}<span class="nm">페이지</span></div>`;
-  (function w(pid, depth){
-    for(const n of km[pid]||[]){
-      const p = n.props;
-      h += `<div class="node${state.sels.includes(n.id)?" on":""}${p.visible?"":" off"}${isLocked(n)?" lk":""}" data-id="${n.id}" style="padding-left:${8+depth*14}px">${icon(n.type,"ic ty")}<span class="nm">${esc(p.name)}</span>`
-        + `<button type="button" class="tg${p.locked?" set":""}" data-tg="locked" title="${p.locked?"잠금 해제":"잠금"}" aria-label="${p.locked?"잠금 해제":"잠금"}">${icon(p.locked?"lock":"unlock")}</button>`
-        + `<button type="button" class="tg${p.visible?"":" set"}" data-tg="visible" title="${p.visible?"숨기기":"보이기"}" aria-label="${p.visible?"숨기기":"보이기"}">${icon(p.visible?"eye":"eyeOff")}</button></div>`;
-      w(n.id, depth+1);
-    }
-  })("_", 1);
-  $("tree").innerHTML = h;
   $("count").textContent = state.project.nodes.length + "개";
+  treeButtons();
+  if(!treeShown()){ dirty = true; return; }
+  dirty = false;
+  const km = kidsMap(), sel = new Set(state.sels);
+  let h = `<div class="node${state.sel?"":" on"}" data-id="">${iconRef("page","ic ty")}<span class="nm">페이지</span></div>`;
+  (function w(pid, depth, lockedUp){
+    for(const n of km[pid]||[]){
+      const p = n.props, lk = lockedUp || !!p.locked;
+      h += `<div class="node${sel.has(n.id)?" on":""}${p.visible?"":" off"}${lk?" lk":""}" data-id="${n.id}" style="padding-left:${8+depth*14}px">${iconRef(n.type,"ic ty")}<span class="nm">${esc(p.name)}</span>`
+        + `<button type="button" class="tg${p.locked?" set":""}" data-tg="locked" title="${p.locked?"잠금 해제":"잠금"}" aria-label="${p.locked?"잠금 해제":"잠금"}">${iconRef(p.locked?"lock":"unlock")}</button>`
+        + `<button type="button" class="tg${p.visible?"":" set"}" data-tg="visible" title="${p.visible?"숨기기":"보이기"}" aria-label="${p.visible?"숨기기":"보이기"}">${iconRef(p.visible?"eye":"eyeOff")}</button></div>`;
+      w(n.id, depth+1, lk);
+    }
+  })("_", 1, false);
+  $("tree").innerHTML = h;
+}
+function treeButtons(){
   const has = !!state.sel, one = state.sels.length <= 1;
   ["dupBtn","delBtn"].forEach(id => $(id).disabled = !has);
   ["upBtn","downBtn"].forEach(id => $(id).disabled = !has || !one);
 }
+// 선택만 바뀌었을 때: 목록을 다시 만들지 않고 강조만 옮긴다
+function treeSel(){
+  treeButtons();
+  if(!treeShown() || dirty){ dirty = true; return; }
+  const sel = new Set(state.sels);
+  for(const r of $("tree").children){ const id = r.dataset.id; r.classList.toggle("on", id ? sel.has(id) : !state.sel); }
+}
+export function showTree(){ if(dirty) renderTree(); }
 
 // 같은 부모 안에서 순서를 바꾼다. 목록 아래쪽(배열 뒤쪽)이 화면에서 위에 그려진다.
 function moveSibling(dir){
@@ -68,7 +84,7 @@ export function removeSel(){
 }
 
 export function initTree(){
-  view.tree = renderTree; view.hint = updateInsertHint;
+  view.tree = renderTree; view.treeSel = treeSel; view.hint = updateInsertHint;
   renderInsert();
   $("insert").addEventListener("click", e => {
     const b = e.target.closest("[data-type]"); if(!b) return;

@@ -235,6 +235,7 @@ function initPan(){
 
 export function initCanvas(){
   view.canvas = renderCanvas;
+  view.overlay = () => { if(ovEl) ovEl.innerHTML = overlayHTML(); };
   $("screen").addEventListener("pointerdown", e => {
     if(e.button !== 0) return;
     const hd = e.target.closest("[data-h]");

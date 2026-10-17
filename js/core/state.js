@@ -20,7 +20,7 @@ export const state = { project:null, sel:null, sels:[], snap:true, device:"1440"
 // 레이아웃 결과(아트보드 픽셀 좌표)와 화면 배율. canvas가 채운다.
 export const geo = { L:{}, I:{}, root:{x:0,y:0,w:0,h:0}, scale:1 };
 // 각 편집기 모듈이 자기 렌더 함수를 여기에 등록한다 (모듈 간 순환 의존 방지)
-export const view = { canvas(){}, tree(){}, props(){}, status(){}, toolbar(){}, hint(){}, anim(){}, timeline(){}, clock(){}, showView(){}, leaveMotion(){} };
+export const view = { overlay(){}, treeSel(){}, preview(){}, canvas(){}, tree(){}, props(){}, status(){}, toolbar(){}, hint(){}, anim(){}, timeline(){}, clock(){}, showView(){}, leaveMotion(){} };
 export function renderAll(){ view.toolbar(); view.canvas(); view.tree(); view.props(); view.status(); view.hint(); view.timeline(); }
 
 export function makeProps(type){
@@ -66,8 +66,21 @@ export function savePrefs(){ lsSet(LS_PREF, {snap:state.snap, device:state.devic
 export const $ = id => document.getElementById(id);
 export const esc = s => String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 export const r3 = v => Math.round(v*1000)/1000;
-export const get = id => state.project.nodes.find(n => n.id === id) || null;
+// id → 요소. 배열 위치 색인을 두고, 위치가 어긋나면(추가·삭제·순서 변경·되돌리기) 다시 만든다.
+let idx = null, idxNodes = null;
+export function get(id){
+  if(id == null || id === "") return null;
+  const ns = state.project.nodes;
+  if(idxNodes === ns){ const i = idx.get(id); if(i !== undefined && ns[i] && ns[i].id === id) return ns[i]; }
+  idxNodes = ns; idx = new Map(ns.map((n, i) => [n.id, i]));
+  const i = idx.get(id); return i === undefined ? null : ns[i];
+}
 export function rgba(hex, a){ const h = hex.replace("#",""); const [r,g,b] = [0,2,4].map(i => parseInt(h.substr(i,2),16) || 0); return `rgba(${r},${g},${b},${Math.max(0,Math.min(1,a))})`; }
+// 요소가 처음 화면에 보일 때 한 번 실행한다 (숨은 탭의 긴 목록은 열 때 만든다)
+export function onFirstShow(el, fn){
+  const ro = new ResizeObserver(() => { if(el.offsetWidth){ ro.disconnect(); fn(); } });
+  ro.observe(el);
+}
 export function kidsMap(){ const m = {}; for(const n of state.project.nodes){ (m[n.parent||"_"] ||= []).push(n); } return m; }
 export function descendants(id){ const km = kidsMap(), out = []; (function w(p){ for(const c of km[p]||[]){ out.push(c.id); w(c.id); } })(id); return out; }
 export function isLocked(n){ for(let x = n; x; x = get(x.parent)) if(x.props.locked) return true; return false; }
@@ -86,7 +99,8 @@ export function select(id, toggle){
     if(state.sels.includes(id)){ state.sels = state.sels.filter(x => x !== id); state.sel = state.sels[state.sels.length-1] || null; }
     else { state.sels.push(id); state.sel = id; }
   } else { state.sel = id; state.sels = id ? [id] : []; }
-  view.canvas(); view.tree(); view.props(); view.status(); view.hint(); view.timeline();
+  // 선택만 바뀌면 캔버스·레이어 목록을 다시 만들지 않고 선택 표시만 고친다
+  view.overlay(); view.treeSel(); view.preview(); view.props(); view.status(); view.hint(); view.timeline();
 }
 
 /* ---------- 히스토리 ---------- */

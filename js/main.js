@@ -2,7 +2,7 @@
 import { DEVICES, state, geo, store, validProject, blankProject, renderAll, select, undo, redo, savePrefs } from "./core/state.js";
 import { initCanvas, nudge, zoomTo } from "./editor/canvas.js";
 import { group, ungroup, copy, cut, paste } from "./editor/edit.js";
-import { initTree, duplicate, removeSel } from "./editor/tree.js";
+import { initTree, showTree, duplicate, removeSel } from "./editor/tree.js";
 import { initProps } from "./editor/props.js";
 import { initToolbar, closeModals, modalOpen } from "./editor/toolbar.js";
 import { mountIcons } from "./editor/icons.js";
@@ -10,7 +10,7 @@ import { initTimeline } from "./editor/timeline.js";
 import { initMotion } from "./editor/motion.js";
 import { initShapes } from "./editor/shapes-panel.js";
 import { initComponents } from "./editor/components-panel.js";
-import { attach, bindElements, toggle as togglePlay, stop as stopPlay } from "./fx/engine.js";
+import { attach, refreshPreview, bindElements, toggle as togglePlay, stop as stopPlay } from "./fx/engine.js";
 import { elementFor } from "./editor/canvas.js";
 import { view } from "./core/state.js";
 
@@ -24,6 +24,7 @@ function showView(v){
   ui.view = v;
   document.querySelectorAll(".rail [data-view]").forEach(b => b.setAttribute("aria-selected", b.dataset.view === v));
   document.querySelectorAll(".lpanel .view").forEach(s => s.hidden = s.dataset.view !== v);
+  if(v === "layers") showTree();
 }
 function setTimeline(open){
   ui.timeline = open;
@@ -71,7 +72,7 @@ if(prefs){
 }
 // 첫 실행은 빈 캔버스. 이전에 작업하던 프로젝트가 있으면 이어서 연다.
 state.project = validProject(store.current()) || blankProject();
-bindElements(elementFor); view.anim = attach;
+bindElements(elementFor); view.anim = attach; view.preview = refreshPreview;
 view.showView = v => { showView(v); saveUI(); };
 initShell(); initToolbar(); initCanvas(); initTree(); initProps(); initTimeline(); initMotion(); initShapes(); initComponents();
 renderAll();

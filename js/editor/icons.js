@@ -37,6 +37,17 @@ const P = {
 };
 export const icon = (name, cls = "ic") => `<svg class="${cls}" viewBox="0 0 16 16" aria-hidden="true">${P[name] || ""}</svg>`;
 // data-icon 속성이 있는 정적 요소 앞에 아이콘을 넣는다
+// 많이 반복되는 곳(레이어 목록)용: 아이콘을 한 번만 정의해 두고 <use>로 참조한다
+let sprite = null;
+export function iconRef(name, cls = "ic"){
+  if(!sprite){
+    sprite = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    sprite.setAttribute("aria-hidden", "true"); sprite.style.cssText = "position:absolute;width:0;height:0;overflow:hidden";
+    sprite.innerHTML = Object.entries(P).map(([k, v]) => `<symbol id="ic-${k}" viewBox="0 0 16 16">${v}</symbol>`).join("");
+    document.body.prepend(sprite);
+  }
+  return `<svg class="${cls}" viewBox="0 0 16 16" aria-hidden="true"><use href="#ic-${name}"/></svg>`;
+}
 export function mountIcons(root = document){
   root.querySelectorAll("[data-icon]").forEach(e => { if(!e.querySelector(":scope > svg.ic")) e.insertAdjacentHTML("afterbegin", icon(e.dataset.icon)); });
 }
