@@ -329,6 +329,13 @@ pre.code{margin:0;background:#060B15;border:1px solid var(--line);border-radius:
 }
 @media (max-width:900px){ .ibtn.pane{display:none} }
 
+/* ---------- 디자인 스타일 칩 ---------- */
+.kits{display:flex;flex-wrap:wrap;gap:4px;padding:2px 14px 6px}
+.kits button{background:var(--panel-2);border:1px solid var(--line);border-radius:999px;padding:3px 10px;font-size:var(--t-sm);color:var(--muted);cursor:pointer;transition:color var(--dur) var(--ease),border-color var(--dur) var(--ease),background var(--dur) var(--ease)}
+.kits button:hover{color:var(--fg);border-color:var(--line-2)}
+.kits button[aria-pressed="true"]{background:var(--accent-strong);border-color:#2B3BFF;color:#fff}
+.note b{color:var(--accent);font-weight:500}
+
 /* ---------- Premodel · 통합 검색 ---------- */
 .find-filter{display:flex;flex-wrap:wrap;gap:4px;padding:0 10px 8px}
 .find-filter button{background:var(--panel-2);border:1px solid var(--line);border-radius:999px;padding:2px 9px;font-size:var(--t-xs);color:var(--muted);cursor:pointer;transition:color var(--dur) var(--ease),border-color var(--dur) var(--ease),background var(--dur) var(--ease)}
