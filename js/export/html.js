@@ -1,10 +1,11 @@
 /* 프로젝트 → 독립 실행 HTML/CSS. 요소는 페이지 컨테이너 안에 절대 위치로 배치하고, 단위(px/%)는 편집기와 같게 유지한다. */
-import { TYPES, state, geo, rgba, kidsMap } from "../core/state.js";
+import { TYPES, state, geo, kidsMap } from "../core/state.js";
 import { build } from "../fx/presets.js";
 import { buildFx, containerCSS } from "../fx/vfx.js";
 import { ANGLE, ANGLE_RULE } from "../fx/vfx-util.js";
 import { shapeOf, shapeFill, shapeShadow } from "../shapes/shapes.js";
 import { ornamentOf, ornColor, ORN_CSS } from "../shapes/ornaments.js";
+import { boxLook } from "../core/styles.js";
 
 const escH = s => String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const num = v => String(+(+v).toFixed(3));
@@ -71,11 +72,7 @@ export function rules(n){
   const p = n.props, t = TYPES[n.type], r = [];
   r.push("position:absolute", `left:${num(p.x)}${p.xu}`, `top:${num(p.y)}${p.yu}`, `width:${num(p.w)}${p.wu}`, `height:${num(p.h)}${p.hu}`);
   if(!t.shape && !t.deco){ // 도형·장식은 SVG가 채우기·선·그림자를 맡는다 (shapeRules, decoRules)
-    if(p.fillAlpha > 0) r.push(`background:${p.fillAlpha >= 1 ? p.fill : rgba(p.fill, p.fillAlpha)}`);
-    if(n.type === "ellipse") r.push("border-radius:50%");
-    else if(p.radius > 0) r.push(`border-radius:${num(p.radius)}px`);
-    if(p.borderWidth > 0) r.push(`border:${num(p.borderWidth)}px ${p.borderStyle} ${p.borderColor}`);
-    if(p.shadowOn) r.push(`box-shadow:${num(p.shadowX)}px ${num(p.shadowY)}px ${num(p.shadowBlur)}px ${num(p.shadowSpread)}px ${rgba(p.shadowColor, p.shadowAlpha)}`);
+    for(const [k, v] of Object.entries(boxLook(n))) r.push(`${k}:${v}`); // 디자인 스타일 키트 포함
   }
   if(p.opacity < 1) r.push(`opacity:${num(p.opacity)}`);
   if(p.rotation) r.push(`transform:rotate(${num(p.rotation)}deg)`);

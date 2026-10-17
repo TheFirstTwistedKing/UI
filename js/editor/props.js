@@ -7,6 +7,7 @@ import { group, ungroup, align, distribute } from "./edit.js";
 import { icon } from "./icons.js";
 import { PRESETS, PRESET, EASINGS, newAnim, normAnim } from "../fx/presets.js";
 import { EFFECTS, EFFECT, newFx, normFx } from "../fx/vfx.js";
+import { STYLE_KITS, kitAllowed } from "../core/styles.js";
 
 // 애니메이션 한 개의 설정 카드. 입력의 data-anim으로 몇 번째 애니메이션인지 구분한다.
 function animCard(raw, i){
@@ -82,6 +83,17 @@ function arrangeSec(multi){
     <div class="alignbar">${alBtn("left","왼쪽 맞춤")}${alBtn("hcenter","가로 가운데")}${alBtn("right","오른쪽 맞춤")}${alBtn("top","위쪽 맞춤")}${alBtn("vcenter","세로 가운데")}${alBtn("bottom","아래쪽 맞춤")}
     ${multi ? alBtn("dh","가로 간격 같게") + alBtn("dv","세로 간격 같게") : ""}</div>
     <div class="conv"><button class="btn" type="button" data-cmd="group">그룹으로 묶기 <small>Ctrl+G</small></button>${get(state.sel)?.type === "group" && !multi ? `<button class="btn" type="button" data-cmd="ungroup">그룹 해제 <small>Ctrl+Shift+G</small></button>` : ""}</div>
+  </div>`;
+}
+
+// 디자인 스타일: 키트를 켜고 끄는 칩. 원래 속성은 바뀌지 않으므로 끄면 원래 모양으로 돌아간다.
+function kitSec(n, multi){
+  const on = new Set(n.props.styleKits || []), hasKids = descendants(n.id).length > 0;
+  return `<div class="sec"><h3>디자인 스타일 <small style="text-transform:none;letter-spacing:0">${on.size ? on.size + "개 사용" : "없음"}</small></h3>
+    <div class="kits" role="group" aria-label="디자인 스타일">${STYLE_KITS.map(k => `<button type="button" data-kit="${k.id}" aria-pressed="${on.has(k.id)}" title="${esc(k.desc)}">${esc(k.name)}</button>`).join("")}</div>
+    ${on.size ? `<p class="note">${STYLE_KITS.filter(k => on.has(k.id)).map(k => `<b>${esc(k.name)}</b> ${esc(k.desc)}`).join("<br>")}</p>` : ""}
+    <p class="note">여러 개를 함께 켤 수 있습니다. 채우기·테두리·그림자 값과 내용은 그대로 두고 위에 덧입히므로, 끄면 원래 모양으로 돌아갑니다.${multi ? " 선택한 요소 전체에 적용됩니다." : ""}</p>
+    ${hasKids ? `<div class="conv"><button class="btn" type="button" data-cmd="kitsDown">하위 요소에도 같은 스타일</button></div><p class="note">면이나 테두리가 있는 하위 요소에만 적용합니다 (글자만 있는 요소는 그대로).</p>` : ""}
   </div>`;
 }
 
@@ -161,6 +173,7 @@ function renderProps(){
       + row("흐림 / 확산", `<div class="ud">${numI("shadowBlur", p.shadowBlur, 1, 'min="0"')}${numI("shadowSpread", p.shadowSpread, 1)}</div>`)
       + row("색", colI("shadowColor", p.shadowColor)) + row("불투명도", alphaI("shadowAlpha", p.shadowAlpha)) : ""}
   </div>`;
+  if(kitAllowed(t)) h += kitSec(n, multi);
   if(t.container) h += `<div class="sec"><h3>레이아웃</h3>${row("넘침 자르기", boolI("clip", p.clip))}</div>`;
   if(t.text){
     h += `<div class="sec"><h3>텍스트</h3>
@@ -282,10 +295,21 @@ export function initProps(){
       const c = cmd.dataset.cmd;
       if(c === "group") group(); else if(c === "ungroup") ungroup();
       else if(c === "addAnim") view.showView("motion"); else if(c === "addFx") view.showView("fx");
+      else if(c === "kitsDown") commit(() => { for(const d of descendants(n.id).map(get)){
+        const q = d.props; if(kitAllowed(TYPES[d.type]) && (q.fillAlpha > 0 || q.borderWidth > 0)) q.styleKits = [...(n.props.styleKits || [])];
+      } });
       else if(c === "reseed") commit(() => { const f = n.props.fx[+cmd.dataset.fx]; if(f) f.seed = Math.floor(Math.random()*1e9); });
       return;
     }
     if(sg){ commit(() => n.props[sg.dataset.seg] = sg.dataset.val); return; }
+    const kit = e.target.closest("[data-kit]");
+    if(kit){
+      const id = kit.dataset.kit, add = !(n.props.styleKits || []).includes(id);
+      commit(() => { for(const s of state.sels.map(get)) if(s && kitAllowed(TYPES[s.type])){
+        const ks = new Set(s.props.styleKits || []); add ? ks.add(id) : ks.delete(id); s.props.styleKits = [...ks];
+      } });
+      return;
+    }
     if(a){
       const [fx, fy] = a.dataset.align.split(",").map(Number);
       computeLayout();

@@ -131,6 +131,23 @@ const LIBS = await (async () => {
   });
   check("큰 프로젝트: 재생 중 프레임 중앙값 40ms 이내", frames < 40, `${frames.toFixed(1)}ms`);
 
+  // 디자인 스타일: 키트를 켜고 꺼도 내용과 원래 속성은 그대로이고, 편집기와 내보내기에 같이 반영된다
+  const kit = await pg.evaluate(async () => {
+    const S = await import("./js/core/state.js"), H = await import("./js/export/html.js");
+    const r = S.node("rect", null, {name:"KitCard", fill:"#334466", radius:6}), t = S.node("text", r.id, {name:"KitLabel", text:"내용 유지"});
+    S.commit(() => { S.state.project.nodes.push(r, t); S.state.sel = r.id; S.state.sels = [r.id]; });
+    const before = JSON.stringify(r.props);
+    return {before, r:r.id};
+  });
+  for(const k of ["glass", "brutal"]) await pg.click(`.kits [data-kit="${k}"]`);
+  const kitOn = await pg.evaluate(async id => { const S = await import("./js/core/state.js"), H = await import("./js/export/html.js");
+    const el = document.querySelector(`#screen [data-id="${id}"]`), css = H.exportCSS();
+    return {kits:S.get(id).props.styleKits.join(","), bf:getComputedStyle(el).backdropFilter, bw:getComputedStyle(el).borderTopWidth, css:css.includes("backdrop-filter") && css.includes("6px 6px 0 0 #000000")}; }, kit.r);
+  await pg.click('.kits [data-kit="glass"]'); await pg.click('.kits [data-kit="brutal"]');
+  const kitOff = await pg.evaluate(async id => { const S = await import("./js/core/state.js"); const p = {...S.get(id).props}; return JSON.stringify(p); }, kit.r);
+  check("디자인 스타일: 조합 적용 · 내보내기 · 끄면 원래대로", kitOn.kits === "glass,brutal" && kitOn.bf.includes("blur") && kitOn.bw === "3px" && kitOn.css && kitOff === kit.before,
+    `${kitOn.kits} / ${kitOn.bf} / ${kitOn.bw}`);
+
   // 통합 검색: 결과를 누르면 해당 라이브러리 탭이 열리고 항목이 강조된다
   await pg.click('.rail [data-view="find"]');
   await pg.fill("#findSearch", "별");

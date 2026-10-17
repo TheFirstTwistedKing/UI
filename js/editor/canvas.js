@@ -1,7 +1,8 @@
 /* 아트보드 렌더링 · 선택 오버레이 · 드래그 이동/크기 조절 */
-import { TYPES, state, geo, view, $, esc, r3, get, rgba, kidsMap, descendants, isLocked, topSel, select, snapshot, pushHistory, autosave, renderAll } from "../core/state.js";
+import { TYPES, state, geo, view, $, esc, r3, get, kidsMap, descendants, isLocked, topSel, select, snapshot, pushHistory, autosave, renderAll } from "../core/state.js";
 import { shapeMarkup } from "../shapes/shapes.js";
 import { ornamentMarkup } from "../shapes/ornaments.js";
+import { boxLook } from "../core/styles.js";
 
 let elMap = {}, ovEl = null;
 
@@ -99,12 +100,9 @@ function paint(d, n, pr){
     if(p.clip) s.overflow = "hidden";
     return;
   }
-  if(p.fillAlpha > 0) s.background = rgba(p.fill, p.fillAlpha);
+  // 채우기·모서리·테두리·그림자는 디자인 스타일 키트까지 합쳐서 계산한다 (내보내기와 같은 함수)
+  for(const [k, v] of Object.entries(boxLook(n))) s.setProperty(k, v);
   if(p.opacity < 1) s.opacity = p.opacity;
-  if(n.type === "ellipse") s.borderRadius = "50%";
-  else if(p.radius > 0) s.borderRadius = p.radius + "px";
-  if(p.borderWidth > 0) s.border = `${p.borderWidth}px ${p.borderStyle} ${p.borderColor}`;
-  if(p.shadowOn) s.boxShadow = `${p.shadowX}px ${p.shadowY}px ${p.shadowBlur}px ${p.shadowSpread}px ${rgba(p.shadowColor, p.shadowAlpha)}`;
   if(p.rotation) s.transform = `rotate(${p.rotation}deg)`;
   if(p.clip) s.overflow = "hidden";
   if(t.text){

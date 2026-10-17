@@ -30,7 +30,7 @@ export function makeProps(type){
     fill:"#1c1c1f", fillAlpha:1, radius:0,
     borderWidth:0, borderStyle:"solid", borderColor:"#e9d8a6",
     shadowOn:false, shadowX:0, shadowY:8, shadowBlur:24, shadowSpread:0, shadowColor:"#000000", shadowAlpha:0.5,
-    clip:false, anims:[], fx:[]};
+    clip:false, styleKits:[], anims:[], fx:[]};
   if(type === "ellipse") Object.assign(p, {w:160, h:160});
   if(t.shape) Object.assign(p, {w:160, h:160, shape:"star5", fill:"#e9d8a6"});
   if(t.deco) Object.assign(p, {w:320, h:24, deco:"lineDiamond", fill:"#e9d8a6", lineWidth:1.5});
