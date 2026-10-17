@@ -7,6 +7,9 @@
 import { state, geo, view, get } from "../core/state.js";
 import { build, endTime, newAnim } from "./presets.js";
 import { buildFx, fxEnd, fxPoster, newFx, containerCSS } from "./vfx.js";
+import { registerAngle } from "./vfx-util.js";
+
+registerAngle(); // 원뿔 그라디언트 회전 각도가 보간되도록
 
 export const player = { t:0, playing:false, active:false, rate:1, loop:true };
 let anims = [], raf = 0, last = 0;

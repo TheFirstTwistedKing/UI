@@ -2,6 +2,7 @@
 import { TYPES, state, geo, rgba, kidsMap } from "../core/state.js";
 import { build } from "../fx/presets.js";
 import { buildFx, containerCSS } from "../fx/vfx.js";
+import { ANGLE, ANGLE_RULE } from "../fx/vfx-util.js";
 
 const escH = s => String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const num = v => String(+(+v).toFixed(3));
@@ -105,7 +106,8 @@ export function exportCSS(){
     }
   })("_");
   if(frames.length) out.push(...frames, `@media (prefers-reduced-motion:reduce){.page *{animation:none!important}}`);
-  return out.join("\n");
+  const css = out.join("\n");
+  return css.includes(ANGLE) ? ANGLE_RULE + "\n" + css : css;
 }
 
 export function exportHTML(){
