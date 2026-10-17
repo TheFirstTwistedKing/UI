@@ -2,6 +2,28 @@
 import { TYPES, FONTS, state, geo, view, $, esc, r3, get, descendants, snapshot, pushHistory, commit, autosave, toast } from "../core/state.js";
 import { renderCanvas, refreshNodes, computeLayout, parentRect, len } from "./canvas.js";
 import { group, ungroup, align, distribute } from "./edit.js";
+import { icon } from "./icons.js";
+
+// 접힌 섹션 제목 목록 (브라우저에 기억)
+const COLLAPSE_KEY = "uiforge.web.collapsed";
+let collapsed;
+try{ collapsed = new Set(JSON.parse(localStorage.getItem(COLLAPSE_KEY)) || []); }catch(e){ collapsed = new Set(); }
+const secKey = h3 => h3.firstChild ? h3.firstChild.textContent.trim() : "";
+function decorateSections(el){
+  el.querySelectorAll(".sec > h3").forEach(h3 => {
+    const k = secKey(h3); h3.dataset.key = k;
+    h3.insertAdjacentHTML("afterbegin", icon("chevron", "ic cv"));
+    h3.setAttribute("role", "button"); h3.tabIndex = 0;
+    const on = collapsed.has(k);
+    h3.parentElement.classList.toggle("collapsed", on); h3.setAttribute("aria-expanded", !on);
+  });
+}
+function toggleSection(h3){
+  const k = h3.dataset.key, on = !collapsed.has(k);
+  on ? collapsed.add(k) : collapsed.delete(k);
+  h3.parentElement.classList.toggle("collapsed", on); h3.setAttribute("aria-expanded", !on);
+  try{ localStorage.setItem(COLLAPSE_KEY, JSON.stringify([...collapsed])); }catch(e){}
+}
 
 const AL = {
   left:'<path d="M2 1v14M5 4h8v3H5zM5 9h5v3H5z"/>', hcenter:'<path d="M8 1v14M3 4h10v3H3zM5 9h6v3H5z"/>', right:'<path d="M14 1v14M3 4h8v3H3zM6 9h5v3H6z"/>',
@@ -43,6 +65,7 @@ function renderProps(){
       <p class="note">화면 — Ctrl+휠 확대·축소 · Ctrl+= / Ctrl+- 확대·축소 · Ctrl+0 화면 맞춤 · 스페이스+드래그 또는 휠 버튼 드래그로 이동. 휴대폰에서는 레이어 아래 '다중' 버튼을 켜면 여러 개를 고를 수 있습니다.</p>
       <p class="note">레이어의 자물쇠로 잠그면 캔버스에서 클릭·이동되지 않습니다. 눈 아이콘은 표시 여부를 바꿉니다.</p>
     </div>`;
+    decorateSections(el);
     return;
   }
   const p = n.props, t = TYPES[n.type];
@@ -107,6 +130,7 @@ function renderProps(){
     </div>`;
   }
   el.innerHTML = h;
+  decorateSections(el);
 }
 
 let focusSnap = null;
@@ -168,7 +192,9 @@ export function initProps(){
     renderCanvas(); view.tree(); view.status(); autosave();
     if(t.dataset.rerender || ["unit","parent"].includes(t.dataset.kind)) renderProps();
   });
+  el.addEventListener("keydown", e => { const h3 = e.target.closest(".sec > h3"); if(h3 && (e.key === "Enter" || e.key === " ")){ e.preventDefault(); toggleSection(h3); } });
   el.addEventListener("click", e => {
+    const h3 = e.target.closest(".sec > h3"); if(h3){ toggleSection(h3); return; }
     const a = e.target.closest("[data-align]"), sg = e.target.closest("[data-seg]"), al = e.target.closest("[data-al]"), cmd = e.target.closest("[data-cmd]");
     const n = get(state.sel); if(!n) return;
     if(al){ const k = al.dataset.al; k === "dh" ? distribute("h") : k === "dv" ? distribute("v") : align(k); return; }

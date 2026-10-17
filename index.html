@@ -14,47 +14,76 @@
 <div class="app">
   <header class="top">
     <div class="brand"><b>UI FORGE</b><span>Web</span></div>
-    <input class="proj" id="projName" type="text" aria-label="프로젝트 이름">
-    <div class="grp"><span class="lbl">화면 폭</span>
-      <select class="sel" id="device" aria-label="화면 폭">
-        <option value="1440">데스크톱 1440</option>
-        <option value="1024">태블릿 가로 1024</option>
-        <option value="768">태블릿 768</option>
-        <option value="390">모바일 390</option>
-      </select>
-    </div>
-    <div class="grp"><span class="lbl">확대</span>
-      <select class="sel" id="zoom" aria-label="확대">
-        <option value="fit">맞춤</option><option value="0.5">50%</option><option value="0.75">75%</option><option value="1">100%</option>
-      </select>
-    </div>
-    <label class="grp" style="cursor:pointer"><input type="checkbox" id="snap" style="accent-color:var(--accent)"><span class="lbl">스냅</span></label>
+    <input class="proj" id="projName" type="text" aria-label="프로젝트 이름" spellcheck="false">
+    <div class="sepv"></div>
     <div class="grp">
-      <button class="btn" id="undo" type="button" title="Ctrl+Z">되돌리기</button>
-      <button class="btn" id="redo" type="button" title="Ctrl+Shift+Z">다시</button>
+      <button class="ibtn" id="undo" type="button" data-icon="undo" title="되돌리기 (Ctrl+Z)" aria-label="되돌리기"></button>
+      <button class="ibtn" id="redo" type="button" data-icon="redo" title="다시 실행 (Ctrl+Shift+Z)" aria-label="다시 실행"></button>
     </div>
+    <div class="sepv"></div>
+    <div class="tools" id="insert" role="toolbar" aria-label="요소 삽입"></div>
     <div class="spacer"></div>
     <div class="grp">
-      <button class="btn" id="newBtn" type="button">새로 만들기</button>
-      <button class="btn" id="saveBtn" type="button">저장</button>
-      <button class="btn" id="loadBtn" type="button">불러오기</button>
-      <button class="btn" id="previewBtn" type="button" title="내보낸 HTML을 새 탭에서 열기">미리보기</button>
-      <button class="btn primary" id="exportBtn" type="button">내보내기</button>
+      <select class="sel" id="device" aria-label="화면 폭" title="화면 폭">
+        <option value="1440">1440 · 데스크톱</option>
+        <option value="1024">1024 · 태블릿 가로</option>
+        <option value="768">768 · 태블릿</option>
+        <option value="390">390 · 모바일</option>
+      </select>
+      <select class="sel" id="zoom" aria-label="확대" title="확대 (Ctrl+휠)">
+        <option value="fit">맞춤</option><option value="0.5">50%</option><option value="0.75">75%</option><option value="1">100%</option>
+      </select>
+      <label class="ibtn toggle" title="스냅 (px 4단위, % 0.5단위)" data-icon="magnet"><input type="checkbox" id="snap" aria-label="스냅"></label>
+    </div>
+    <div class="sepv"></div>
+    <div class="grp">
+      <button class="ibtn" id="newBtn" type="button" data-icon="file" title="새로 만들기" aria-label="새로 만들기"></button>
+      <button class="ibtn" id="saveBtn" type="button" data-icon="save" title="저장" aria-label="저장"></button>
+      <button class="ibtn" id="loadBtn" type="button" data-icon="open" title="불러오기" aria-label="불러오기"></button>
+    </div>
+    <div class="grp">
+      <button class="btn" id="previewBtn" type="button" data-icon="play" title="내보낸 HTML을 새 탭에서 열기">미리보기</button>
+      <button class="btn primary" id="exportBtn" type="button" data-icon="export">내보내기</button>
     </div>
   </header>
 
   <aside class="left">
-    <div class="ph">삽입</div>
-    <div class="insert" id="insert"></div>
-    <div class="hint" id="insHint"></div>
-    <div class="ph">레이어 <small id="count"></small></div>
-    <div class="tree" id="tree"></div>
-    <div class="treebar">
-      <button class="btn" id="upBtn" type="button" title="목록에서 위로 (뒤로 보내기)">▲</button>
-      <button class="btn" id="downBtn" type="button" title="목록에서 아래로 (앞으로 가져오기)">▼</button>
-      <button class="btn" id="dupBtn" type="button" title="Ctrl+D">복제</button>
-      <button class="btn danger" id="delBtn" type="button" title="Delete">삭제</button>
-      <button class="btn" id="multiTap" type="button" title="켜면 누르는 요소가 선택에 추가됩니다 (휴대폰용)" aria-pressed="false">다중</button>
+    <nav class="rail" role="tablist" aria-label="왼쪽 패널">
+      <button type="button" role="tab" data-view="layers" data-icon="layers" title="레이어" aria-label="레이어"></button>
+      <button type="button" role="tab" data-view="component" data-icon="component" title="UI 구성 요소" aria-label="UI 구성 요소"></button>
+      <button type="button" role="tab" data-view="ornament" data-icon="ornament" title="장식" aria-label="장식"></button>
+      <button type="button" role="tab" data-view="motion" data-icon="motion" title="애니메이션" aria-label="애니메이션"></button>
+      <button type="button" role="tab" data-view="fx" data-icon="fx" title="VFX" aria-label="VFX"></button>
+    </nav>
+    <div class="lpanel">
+      <section class="view" data-view="layers">
+        <div class="ph">레이어 <small id="count"></small></div>
+        <div class="hint" id="insHint"></div>
+        <div class="tree" id="tree"></div>
+        <div class="treebar">
+          <button class="btn" id="upBtn" type="button" title="목록에서 위로 (뒤로 보내기)" aria-label="위로">▲</button>
+          <button class="btn" id="downBtn" type="button" title="목록에서 아래로 (앞으로 가져오기)" aria-label="아래로">▼</button>
+          <button class="btn" id="dupBtn" type="button" title="Ctrl+D">복제</button>
+          <button class="btn danger" id="delBtn" type="button" title="Delete">삭제</button>
+          <button class="btn" id="multiTap" type="button" title="켜면 누르는 요소가 선택에 추가됩니다 (휴대폰용)" aria-pressed="false">다중</button>
+        </div>
+      </section>
+      <section class="view" data-view="component" hidden>
+        <div class="ph">UI 구성 요소</div>
+        <div class="empty-state"><b>버튼, 카드, 패널, 입력창, 게이지</b>처럼 바로 쓸 수 있는 구성 요소가 여기에 들어옵니다.<span>Phase 6 라이브러리 확장에서 추가</span></div>
+      </section>
+      <section class="view" data-view="ornament" hidden>
+        <div class="ph">장식</div>
+        <div class="empty-state"><b>장식선, 테두리 장식, 홀로그램 장식, 기하학 패턴</b>이 여기에 들어옵니다.<span>Phase 6 라이브러리 확장에서 추가</span></div>
+      </section>
+      <section class="view" data-view="motion" hidden>
+        <div class="ph">애니메이션</div>
+        <div class="empty-state"><b>등장·이동·회전·글로우·글리치</b> 같은 애니메이션을 미리 보고 요소에 적용합니다.<span>Phase 4 애니메이션 엔진에서 추가</span></div>
+      </section>
+      <section class="view" data-view="fx" hidden>
+        <div class="ph">VFX</div>
+        <div class="empty-state"><b>오류, 글리치, 파괴</b>를 포함한 시각 효과를 미리 보고 적용합니다.<span>Phase 5 VFX 엔진에서 추가</span></div>
+      </section>
     </div>
   </aside>
 
@@ -63,6 +92,21 @@
   </main>
 
   <aside class="right" id="props"></aside>
+
+  <section class="timeline" id="timeline" aria-label="타임라인">
+    <div class="tl-head">
+      <button class="ibtn" type="button" data-icon="play" title="재생 (애니메이션 엔진 연결 후 사용)" aria-label="재생" disabled></button>
+      <span class="tl-time">00:00.00</span>
+      <select class="sel" aria-label="재생 속도" disabled><option>1×</option></select>
+      <span class="tl-title" data-icon="timeline">타임라인</span>
+      <div class="spacer"></div>
+      <button class="ibtn tl-toggle" id="tlToggle" type="button" data-icon="chevron" title="타임라인 접기/펼치기" aria-label="타임라인 접기/펼치기" aria-expanded="true"></button>
+    </div>
+    <div class="tl-body">
+      <div class="ruler" id="ruler"></div>
+      <div class="tl-empty">키프레임과 효과 구간은 Phase 4 애니메이션 엔진에서 이 영역에 표시됩니다.</div>
+    </div>
+  </section>
 
   <footer class="status" id="status"></footer>
 </div>
