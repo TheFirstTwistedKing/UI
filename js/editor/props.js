@@ -8,6 +8,7 @@ import { icon } from "./icons.js";
 import { PRESETS, PRESET, EASINGS, newAnim, normAnim } from "../fx/presets.js";
 import { EFFECTS, EFFECT, newFx, normFx } from "../fx/vfx.js";
 import { STYLE_KITS, kitAllowed } from "../core/styles.js";
+import { MODES, TRIGGERS, TRIGGER, ACTIONS, ACTION, newAction, modeSupport } from "../core/interact.js";
 
 // 애니메이션 한 개의 설정 카드. 입력의 data-anim으로 몇 번째 애니메이션인지 구분한다.
 function animCard(raw, i){
@@ -97,6 +98,32 @@ function kitSec(n, multi){
   </div>`;
 }
 
+// 페이지의 인터랙션 모드: 켜고 끄는 칩과, 지금 브라우저에서의 지원 상태
+function modeSec(){
+  const on = new Set(state.project.page.modes || ["gui"]);
+  return `<div class="sec"><h3>인터랙션 모드 <small style="text-transform:none;letter-spacing:0">${on.size}개 사용</small></h3>
+    <div class="kits" role="group" aria-label="인터랙션 모드">${MODES.map(m => `<button type="button" data-mode="${m.id}" aria-pressed="${on.has(m.id)}" title="${esc(m.desc)}">${m.name}</button>`).join("")}</div>
+    <div class="modes">${MODES.filter(m => on.has(m.id)).map(m => { const s = modeSupport(m.id);
+      return `<div class="mode-row"><b>${m.name}</b><span>${esc(m.desc)}</span><em class="${s.ok ? "ok" : "sim"}">${esc(s.label)}</em></div>`; }).join("")}</div>
+    <p class="note">여러 모드를 함께 켤 수 있습니다. 요소를 고르고 '인터랙션'에서 동작을 추가하면 내보낸 페이지(미리보기)에서 작동합니다. 지원 상태는 지금 이 브라우저 기준이며, 지원하지 않는 입력은 내보낸 페이지에서 시뮬레이션으로 표시됩니다.</p>
+  </div>`;
+}
+// 요소의 동작 목록: 트리거(켠 모드의 것만) → 동작 → 대상 → 값
+function actCard(x, i, n){
+  const modes = state.project.page.modes || ["gui"], A = `data-act="${i}"`, tr = TRIGGER[x.on], ac = ACTION[x.do] || ACTIONS[0];
+  const trig = MODES.filter(m => modes.includes(m.id) || (tr && tr.mode === m.id)).map(m => `<optgroup label="${m.name}${modes.includes(m.id) ? "" : " (꺼진 모드)"}">${TRIGGERS.filter(t => t.mode === m.id).map(t => `<option value="${t.id}"${t.id === x.on ? " selected" : ""}>${esc(t.name)}</option>`).join("")}</optgroup>`).join("");
+  const targets = [`<option value="">이 요소</option>`].concat(state.project.nodes.filter(m => m.id !== n.id).map(m => `<option value="${m.id}"${m.id === x.t ? " selected" : ""}>${esc(m.props.name)}</option>`)).join("");
+  const off = tr && !modes.includes(tr.mode);
+  return `<div class="anim-card act-card">
+    <div class="anim-head"><b>${esc(tr ? tr.name : x.on)}</b><small>${tr ? MODES.find(m => m.id === tr.mode).name : ""}${off ? " · 꺼진 모드라 작동 안 함" : ""}</small><button type="button" class="ib" data-act-del="${i}" title="이 동작 삭제" aria-label="이 동작 삭제">${icon("close")}</button></div>
+    ${row("언제", `<select id="x${i}-on" data-prop="on" data-kind="enum" ${A} data-rerender="1">${trig}</select>`)}
+    ${tr && tr.v ? row(tr.v, `<input type="text" id="x${i}-v" data-prop="v" data-kind="text" ${A} value="${esc(x.v)}" placeholder="${esc(tr.ph)}">`) : ""}
+    ${row("무엇을", `<select id="x${i}-do" data-prop="do" data-kind="enum" ${A} data-rerender="1">${ACTIONS.map(a => `<option value="${a.id}"${a.id === x.do ? " selected" : ""}>${esc(a.name)}</option>`).join("")}</select>`)}
+    ${ac.t ? row("대상", `<select id="x${i}-t" data-prop="t" data-kind="enum" ${A}>${targets}</select>`) : ""}
+    ${ac.a ? row("값", `<input type="text" id="x${i}-a" data-prop="a" data-kind="text" ${A} value="${esc(x.a)}" placeholder="${esc(ac.a)}">`) : ""}
+  </div>`;
+}
+
 const row = (label, ctl) => `<div class="row"><label>${label}</label><div class="ctl">${ctl}</div></div>`;
 const numI = (p, v, step, extra="") => `<input type="number" id="p-${p}" data-prop="${p}" data-kind="num" step="${step}" value="${v}" ${extra}>`;
 const txtI = (p, v) => `<input type="text" id="p-${p}" data-prop="${p}" data-kind="text" value="${esc(v)}">`;
@@ -117,6 +144,7 @@ function renderProps(){
       ${row("높이", `<input type="number" id="pg-height" data-prop="height" data-kind="num" ${S} step="10" min="100" value="${pg.height}">`)}
       ${row("배경색", `<input type="color" id="pg-bg-c" data-prop="bg" data-kind="color" ${S} value="${pg.bg}"><input type="text" id="pg-bg" data-prop="bg" data-kind="color" ${S} value="${pg.bg}" spellcheck="false">`)}
     </div>
+    ${modeSec()}
     <div class="sec"><h3>사용법</h3>
       <p class="note">왼쪽에서 요소를 삽입하고 캔버스에서 끌어 옮기거나 핸들로 크기를 바꿉니다. 위치와 크기는 px 또는 부모 기준 %로 지정할 수 있습니다.</p>
       <p class="note">단축키 — Delete 삭제 · Ctrl+D 복제 · Ctrl+C / X / V 복사·잘라내기·붙여넣기 · Ctrl+G 그룹 · Ctrl+Shift+G 그룹 해제 · Ctrl+Z / Ctrl+Shift+Z 되돌리기·다시 · 방향키 1px 이동(Shift 10px) · Shift/Ctrl+클릭 다중 선택 · Ctrl+A 전체 선택 · Esc 선택 해제</p>
@@ -198,6 +226,11 @@ function renderProps(){
     <div class="conv"><button class="btn" type="button" data-cmd="addFx">${icon("plus")}VFX 추가</button></div>
     <p class="note">편집 중에는 효과의 한 장면만 멈춰 보입니다. 파괴처럼 요소 자체가 바뀌는 효과는 타임라인에서 재생할 때 나타납니다.</p>
   </div>`;
+  h += `<div class="sec"><h3>인터랙션 <small style="text-transform:none;letter-spacing:0">${(p.actions||[]).length}개</small></h3>
+    ${(p.actions||[]).map((x, i) => actCard(x, i, n)).join("")}
+    <div class="conv"><button class="btn" type="button" data-cmd="addAct">${icon("plus")}동작 추가</button></div>
+    <p class="note">켜 둔 인터랙션 모드(${(state.project.page.modes || ["gui"]).map(m => MODES.find(x => x.id === m)?.name).join(", ")})의 트리거를 쓸 수 있습니다. 모드는 빈 곳을 눌러 페이지 설정에서 바꿉니다. 동작은 '미리보기'나 내보낸 HTML에서 작동합니다.</p>
+  </div>`;
   if(t.image){
     h += `<div class="sec"><h3>이미지</h3>
       ${row("주소 (URL)", txtI("src", p.src.startsWith("data:") ? "(올린 파일)" : p.src))}
@@ -216,6 +249,7 @@ function applyField(t){
   const n = get(state.sel);
   let scope = t.dataset.scope === "page" ? state.project.page : n && n.props;
   if(scope && t.dataset.anim !== undefined){ scope.anims[+t.dataset.anim] = normAnim(scope.anims[+t.dataset.anim]); scope = scope.anims[+t.dataset.anim]; }
+  if(scope && t.dataset.act !== undefined) scope = scope.actions[+t.dataset.act];
   if(scope && t.dataset.fx !== undefined){ scope.fx[+t.dataset.fx] = normFx(scope.fx[+t.dataset.fx]); scope = scope.fx[+t.dataset.fx]; }
   if(!scope) return false;
   const k = t.dataset.kind, p = t.dataset.prop;
@@ -284,17 +318,22 @@ export function initProps(){
   el.addEventListener("keydown", e => { const h3 = e.target.closest(".sec > h3"); if(h3 && (e.key === "Enter" || e.key === " ")){ e.preventDefault(); toggleSection(h3); } });
   el.addEventListener("click", e => {
     const h3 = e.target.closest(".sec > h3"); if(h3){ toggleSection(h3); return; }
+    const md = e.target.closest("[data-mode]");
+    if(md){ commit(() => { const pg = state.project.page, s = new Set(pg.modes || ["gui"]); s.has(md.dataset.mode) ? s.delete(md.dataset.mode) : s.add(md.dataset.mode); pg.modes = MODES.map(m => m.id).filter(m => s.has(m)); }); return; }
     const a = e.target.closest("[data-align]"), sg = e.target.closest("[data-seg]"), al = e.target.closest("[data-al]"), cmd = e.target.closest("[data-cmd]");
     const n = get(state.sel); if(!n) return;
     if(al){ const k = al.dataset.al; k === "dh" ? distribute("h") : k === "dv" ? distribute("v") : align(k); return; }
     const del = e.target.closest("[data-anim-del]");
     if(del){ commit(() => n.props.anims.splice(+del.dataset.animDel, 1)); return; }
+    const xdel = e.target.closest("[data-act-del]");
+    if(xdel){ commit(() => n.props.actions.splice(+xdel.dataset.actDel, 1)); return; }
     const fdel = e.target.closest("[data-fx-del]");
     if(fdel){ commit(() => n.props.fx.splice(+fdel.dataset.fxDel, 1)); return; }
     if(cmd){
       const c = cmd.dataset.cmd;
       if(c === "group") group(); else if(c === "ungroup") ungroup();
       else if(c === "addAnim") view.showView("motion"); else if(c === "addFx") view.showView("fx");
+      else if(c === "addAct") commit(() => (n.props.actions ||= []).push(newAction((state.project.page.modes || ["gui"])[0])));
       else if(c === "kitsDown") commit(() => { for(const d of descendants(n.id).map(get)){
         const q = d.props; if(kitAllowed(TYPES[d.type]) && (q.fillAlpha > 0 || q.borderWidth > 0)) q.styleKits = [...(n.props.styleKits || [])];
       } });

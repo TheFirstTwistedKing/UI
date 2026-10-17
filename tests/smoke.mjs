@@ -148,6 +148,25 @@ const LIBS = await (async () => {
   check("디자인 스타일: 조합 적용 · 내보내기 · 끄면 원래대로", kitOn.kits === "glass,brutal" && kitOn.bf.includes("blur") && kitOn.bw === "3px" && kitOn.css && kitOff === kit.before,
     `${kitOn.kits} / ${kitOn.bf} / ${kitOn.bw}`);
 
+  // 인터랙션 모드: 페이지에서 모드를 켜고 요소에 동작을 넣으면 내보낸 HTML에서 작동한다
+  await pg.keyboard.press("Escape");
+  await pg.click('.kits [data-mode="cli"]');
+  const modes = await pg.evaluate(async () => (await import("./js/core/state.js")).state.project.page.modes.join(","));
+  const ia = await pg.evaluate(async () => {
+    const S = await import("./js/core/state.js"), H = await import("./js/export/html.js");
+    const b = S.node("rect", null, {name:"IaBtn", x:10, y:10, w:120, h:40}), t = S.node("rect", null, {name:"IaPanel", x:200, y:10, w:120, h:80, visible:false});
+    b.props.actions = [{on:"click", v:"", do:"toggle", t:t.id, a:""}, {on:"command", v:"open", do:"show", t:t.id, a:""}];
+    S.commit(() => { S.state.project.nodes.push(b, t); });
+    return H.exportDocument();
+  });
+  const ex = await ctx.newPage(); await ex.setContent(ia);
+  const d0 = await ex.evaluate(() => getComputedStyle(document.querySelector(".iapanel")).display);
+  await ex.click(".iabtn"); const d1 = await ex.evaluate(() => getComputedStyle(document.querySelector(".iapanel")).display);
+  await ex.click(".iabtn"); await ex.fill(".ui-bar input", "open"); await ex.press(".ui-bar input", "Enter");
+  const d2 = await ex.evaluate(() => getComputedStyle(document.querySelector(".iapanel")).display);
+  await ex.close();
+  check("인터랙션: 모드 켜기 · 누르기 · CLI 명령이 내보낸 HTML에서 작동", modes === "gui,cli" && d0 === "none" && d1 === "block" && d2 === "block", `${modes} / ${d0}→${d1}, 명령 ${d2}`);
+
   // 통합 검색: 결과를 누르면 해당 라이브러리 탭이 열리고 항목이 강조된다
   await pg.click('.rail [data-view="find"]');
   await pg.fill("#findSearch", "별");
