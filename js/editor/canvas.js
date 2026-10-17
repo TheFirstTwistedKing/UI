@@ -1,6 +1,7 @@
 /* 아트보드 렌더링 · 선택 오버레이 · 드래그 이동/크기 조절 */
 import { TYPES, state, geo, view, $, esc, r3, get, rgba, kidsMap, descendants, isLocked, topSel, select, snapshot, pushHistory, autosave, renderAll } from "../core/state.js";
 import { shapeMarkup } from "../shapes/shapes.js";
+import { ornamentMarkup } from "../shapes/ornaments.js";
 
 let elMap = {}, ovEl = null;
 
@@ -77,9 +78,9 @@ function paint(d, n, pr){
   const s = d.style;
   s.left = (r.x - pr.x) + "px"; s.top = (r.y - pr.y) + "px";
   s.width = Math.max(0,r.w) + "px"; s.height = Math.max(0,r.h) + "px";
-  if(t.shape){
-    // 도형은 SVG가 채우기·선·그림자를 맡고, 상자 자체는 투명하게 둔다
-    d.insertAdjacentHTML("afterbegin", shapeMarkup(p));
+  if(t.shape || t.deco){
+    // 도형·장식은 SVG가 채우기·선·그림자를 맡고, 상자 자체는 투명하게 둔다
+    d.insertAdjacentHTML("afterbegin", t.shape ? shapeMarkup(p) : ornamentMarkup(p));
     if(p.opacity < 1) s.opacity = p.opacity;
     if(p.rotation) s.transform = `rotate(${p.rotation}deg)`;
     if(p.clip) s.overflow = "hidden";

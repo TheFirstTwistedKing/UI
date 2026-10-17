@@ -20,6 +20,7 @@ const P = {
   // 요소 유형
   rect:'<rect x="2.5" y="3.5" width="11" height="9" rx="1"/>',
   ellipse:'<circle cx="8" cy="8" r="5.5"/>',
+  deco:'<path d="M8 1.5v13M1.5 8h13"/><path d="m3.5 3.5 9 9M12.5 3.5l-9 9"/><circle cx="8" cy="8" r="2.5"/>',
   shape:'<path d="m4.5 1.8 3 5.2h-6z"/><circle cx="11.3" cy="4.6" r="2.6"/><rect x="5" y="9" width="6.5" height="5.2" rx=".6"/>',
   text:'<path d="M3 3.5h10M8 3.5v9.5M6 13h4"/>',
   image:'<rect x="2" y="2.5" width="12" height="11" rx="1"/><circle cx="5.5" cy="6" r="1.2"/><path d="m2.5 12 4-4 3 3 1.5-1.5 2.5 2.5"/>',
