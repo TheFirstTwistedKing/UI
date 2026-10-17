@@ -1,0 +1,105 @@
+/* 프로젝트 → 독립 실행 HTML/CSS. 요소는 페이지 컨테이너 안에 절대 위치로 배치하고, 단위(px/%)는 편집기와 같게 유지한다. */
+import { TYPES, state, rgba, kidsMap } from "../core/state.js";
+
+const escH = s => String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const num = v => String(+(+v).toFixed(3));
+
+// 이름에서 CSS 클래스 이름을 만든다. 영문이 없으면 유형+번호를 쓴다.
+function classNames(nodes){
+  const used = new Set(["page"]), map = {}, count = {};
+  for(const n of nodes){
+    let base = n.props.name.toLowerCase().normalize("NFKD").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+    if(!base || /^\d/.test(base)) base = n.type + "-" + (count[n.type] = (count[n.type]||0) + 1);
+    let k = base, i = 2;
+    while(used.has(k)) k = base + "-" + i++;
+    used.add(k); map[n.id] = k;
+  }
+  return map;
+}
+
+function rules(n){
+  const p = n.props, t = TYPES[n.type], r = [];
+  r.push("position:absolute", `left:${num(p.x)}${p.xu}`, `top:${num(p.y)}${p.yu}`, `width:${num(p.w)}${p.wu}`, `height:${num(p.h)}${p.hu}`);
+  if(p.fillAlpha > 0) r.push(`background:${p.fillAlpha >= 1 ? p.fill : rgba(p.fill, p.fillAlpha)}`);
+  if(n.type === "ellipse") r.push("border-radius:50%");
+  else if(p.radius > 0) r.push(`border-radius:${num(p.radius)}px`);
+  if(p.borderWidth > 0) r.push(`border:${num(p.borderWidth)}px ${p.borderStyle} ${p.borderColor}`);
+  if(p.shadowOn) r.push(`box-shadow:${num(p.shadowX)}px ${num(p.shadowY)}px ${num(p.shadowBlur)}px ${num(p.shadowSpread)}px ${rgba(p.shadowColor, p.shadowAlpha)}`);
+  if(p.opacity < 1) r.push(`opacity:${num(p.opacity)}`);
+  if(p.rotation) r.push(`transform:rotate(${num(p.rotation)}deg)`);
+  if(p.clip) r.push("overflow:hidden");
+  if(t.text){
+    r.push("flex-direction:column", `justify-content:${{top:"flex-start",center:"center",bottom:"flex-end"}[p.valign]}`,
+      `font-family:${p.font}, sans-serif`, `font-size:${num(p.fontSize)}px`, `font-weight:${p.fontWeight}`, `line-height:${num(p.lineHeight)}`,
+      `color:${p.color}`, `text-align:${p.align}`, "white-space:pre-wrap");
+    if(p.letterSpacing) r.push(`letter-spacing:${num(p.letterSpacing)}px`);
+  }
+  if(!p.visible) r.push("display:none");
+  else if(t.text) r.push("display:flex");
+  return r;
+}
+
+export function exportCSS(){
+  const P = state.project, cls = classNames(P.nodes), km = kidsMap();
+  const out = [`*,*::before,*::after{box-sizing:border-box}`, `body{margin:0;background:${P.page.bg}}`,
+    `.page{position:relative;width:100%;max-width:${state.device}px;height:${num(P.page.height)}px;margin:0 auto;background:${P.page.bg};overflow:hidden}`];
+  (function w(pid){
+    for(const n of km[pid]||[]){
+      out.push(`/* ${n.props.name.replace(/\*\//g, "")} */\n.${cls[n.id]}{${rules(n).join(";")}}`);
+      if(TYPES[n.type].image) out.push(`.${cls[n.id]} img{display:block;width:100%;height:100%;object-fit:${n.props.fit};border-radius:inherit}`);
+      w(n.id);
+    }
+  })("_");
+  return out.join("\n");
+}
+
+export function exportHTML(){
+  const P = state.project, cls = classNames(P.nodes), km = kidsMap(), lines = [];
+  (function w(pid, depth){
+    const pad = "  ".repeat(depth);
+    for(const n of km[pid]||[]){
+      const p = n.props, t = TYPES[n.type];
+      const inner = t.text ? escH(p.text) : t.image && p.src ? `<img src="${escH(p.src)}" alt="">` : "";
+      const kids = km[n.id];
+      if(kids && kids.length){
+        lines.push(`${pad}<div class="${cls[n.id]}">${inner}`);
+        w(n.id, depth+1);
+        lines.push(`${pad}</div>`);
+      } else lines.push(`${pad}<div class="${cls[n.id]}">${inner}</div>`);
+    }
+  })("_", 2);
+  return lines.join("\n");
+}
+
+// Google Fonts에서 글꼴마다 제공하는 굵기 (없는 굵기를 요청하면 전체 요청이 실패한다)
+const FONT_WEIGHTS = {"IBM Plex Sans KR":[300,400,500,600,700], "Noto Sans KR":[300,400,500,700,900], "Montserrat":[300,400,500,600,700,900], "Inter":[300,400,500,600,700,900],
+  "JetBrains Mono":[400,500,700], "Orbitron":[400,500,700,900], "Cinzel":[400,600,700], "Noto Serif KR":[400,700]};
+
+// 웹 폰트 링크를 포함한 단독 HTML 문서
+export function exportDocument(){
+  const P = state.project, used = {};
+  for(const n of P.nodes) if(TYPES[n.type].text){ const f = n.props.font.replace(/"/g, ""); if(FONT_WEIGHTS[f]) (used[f] ||= new Set()).add(n.props.fontWeight); }
+  // 쓰인 굵기 중 제공되는 것만, 없으면 가장 가까운 굵기로 요청
+  const g = Object.keys(used).map(f => {
+    const ok = FONT_WEIGHTS[f], ws = [...new Set([...used[f]].map(w => ok.reduce((a,b) => Math.abs(b-w) < Math.abs(a-w) ? b : a)))].sort((a,b) => a-b);
+    return "family=" + f.replace(/ /g, "+") + ":wght@" + ws.join(";");
+  });
+  const link = g.length ? `\n<link rel="stylesheet" href="https://fonts.googleapis.com/css2?${g.join("&")}&display=swap">` : "";
+  return `<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>${escH(P.name)}</title>${link}
+<style>
+${exportCSS()}
+</style>
+</head>
+<body>
+  <div class="page">
+${exportHTML()}
+  </div>
+</body>
+</html>
+`;
+}

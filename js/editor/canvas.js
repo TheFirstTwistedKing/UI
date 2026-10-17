@@ -8,19 +8,22 @@ export const len = (v, u, dim) => u === "%" ? v/100*dim : v;
 export function computeLayout(){
   const W = +state.device, H = state.project.page.height;
   geo.root = {x:0, y:0, w:W, h:H};
-  geo.L = {};
+  geo.L = {}; geo.I = {};
   const km = kidsMap();
   (function walk(pid, pr){
     for(const n of km[pid]||[]){
       const p = n.props;
       const w = len(p.w, p.wu, pr.w), h = len(p.h, p.hu, pr.h);
       const r = {x:pr.x + len(p.x, p.xu, pr.w), y:pr.y + len(p.y, p.yu, pr.h), w, h};
-      geo.L[n.id] = r;
-      walk(n.id, r);
+      // 자식은 CSS처럼 테두리 안쪽(padding box)을 기준으로 배치된다
+      const b = p.borderWidth > 0 ? p.borderWidth : 0;
+      const inner = b ? {x:r.x + b, y:r.y + b, w:Math.max(0, w - 2*b), h:Math.max(0, h - 2*b)} : r;
+      geo.L[n.id] = r; geo.I[n.id] = inner;
+      walk(n.id, inner);
     }
   })("_", geo.root);
 }
-export const parentRect = n => n.parent ? geo.L[n.parent] : geo.root;
+export const parentRect = n => n.parent ? geo.I[n.parent] : geo.root;
 
 /* ---------- 렌더 ---------- */
 export function renderCanvas(){
@@ -46,7 +49,7 @@ export function renderCanvas(){
       el.dataset.id = n.id; elMap[n.id] = el;
       paint(el, n, pr);
       parentEl.appendChild(el);
-      build(n.id, el, geo.L[n.id]);
+      build(n.id, el, geo.I[n.id]);
     }
   })("_", scr, geo.root);
   ovEl = document.createElement("div"); ovEl.className = "ov"; ovEl.innerHTML = overlayHTML();
@@ -165,15 +168,56 @@ function resizeFn(hd){
     p.x = shiftVal(P0.x, p.xu, mx, pr.w); p.y = shiftVal(P0.y, p.yu, my, pr.h);
   };
 }
+// 픽셀 이동량을 요소의 단위에 맞춰 정확히 더한다 (스냅 없음)
+export function moveBy(n, dx, dy){
+  const p = n.props, pr = parentRect(n);
+  if(dx) p.x = p.xu === "%" ? r3(p.x + dx/pr.w*100) : r3(p.x + dx);
+  if(dy) p.y = p.yu === "%" ? r3(p.y + dy/pr.h*100) : r3(p.y + dy);
+}
 export function nudge(dx, dy){
   const movers = topSel().filter(n => !isLocked(n)); if(!movers.length) return;
   const b = snapshot();
-  for(const n of movers){
-    const p = n.props, pr = parentRect(n);
-    if(dx) p.x = p.xu === "%" ? r3(p.x + dx/pr.w*100) : p.x + dx;
-    if(dy) p.y = p.yu === "%" ? r3(p.y + dy/pr.h*100) : p.y + dy;
-  }
+  computeLayout();
+  movers.forEach(n => moveBy(n, dx, dy));
   pushHistory(b); renderAll(); autosave();
+}
+
+/* ---------- 확대 · 화면 이동 ---------- */
+// 배율을 바꾸되 (cx, cy) 화면 지점 아래의 아트보드 위치가 그대로 있도록 스크롤을 맞춘다
+export function zoomTo(z, cx, cy){
+  const stage = $("stage"), scr = $("screen");
+  z = Math.max(0.1, Math.min(4, z));
+  const sr = stage.getBoundingClientRect();
+  if(cx === undefined){ cx = sr.left + sr.width/2; cy = sr.top + sr.height/2; }
+  const r0 = scr.getBoundingClientRect(), ax = (cx - r0.left)/geo.scale, ay = (cy - r0.top)/geo.scale;
+  state.zoom = String(Math.round(z*100)/100);
+  renderCanvas();
+  const r1 = scr.getBoundingClientRect();
+  stage.scrollLeft += r1.left + ax*geo.scale - cx;
+  stage.scrollTop += r1.top + ay*geo.scale - cy;
+  view.toolbar(); view.status();
+}
+let spaceHeld = false;
+function initPan(){
+  const stage = $("stage");
+  window.addEventListener("keydown", e => { if(e.code === "Space" && !/INPUT|TEXTAREA|SELECT/.test(e.target.tagName)){ if(!spaceHeld){ spaceHeld = true; stage.classList.add("pan"); } e.preventDefault(); } });
+  window.addEventListener("keyup", e => { if(e.code === "Space"){ spaceHeld = false; stage.classList.remove("pan"); } });
+  // 스페이스+드래그 또는 가운데 버튼 드래그로 화면 이동
+  stage.addEventListener("pointerdown", e => {
+    if(!(e.button === 1 || (e.button === 0 && spaceHeld))) return;
+    e.preventDefault(); e.stopPropagation();
+    const sx = e.clientX, sy = e.clientY, l0 = stage.scrollLeft, t0 = stage.scrollTop;
+    stage.classList.add("panning");
+    const mv = ev => { stage.scrollLeft = l0 - (ev.clientX - sx); stage.scrollTop = t0 - (ev.clientY - sy); };
+    const up = () => { stage.classList.remove("panning"); window.removeEventListener("pointermove", mv); window.removeEventListener("pointerup", up); };
+    window.addEventListener("pointermove", mv); window.addEventListener("pointerup", up);
+  }, true);
+  // Ctrl/⌘ + 휠(또는 트랙패드 핀치)로 커서 기준 확대
+  stage.addEventListener("wheel", e => {
+    if(!(e.ctrlKey || e.metaKey)) return;
+    e.preventDefault();
+    zoomTo(geo.scale * Math.exp(-e.deltaY * 0.0015), e.clientX, e.clientY);
+  }, {passive:false});
 }
 
 export function initCanvas(){
@@ -183,7 +227,7 @@ export function initCanvas(){
     const hd = e.target.closest("[data-h]");
     if(hd){ dragSession(e, resizeFn(hd.dataset.h), [get(state.sel)]); return; }
     const g = e.target.closest(".el");
-    const add = e.shiftKey || e.ctrlKey || e.metaKey;
+    const add = e.shiftKey || e.ctrlKey || e.metaKey || state.multiTap;
     if(!g){ if(!add) select(null); return; }
     const id = g.dataset.id;
     if(add){ select(id, true); if(!state.sels.includes(id)) return; }
@@ -191,7 +235,8 @@ export function initCanvas(){
     else if(state.sel !== id){ state.sel = id; renderAll(); }
     dragSession(e, moveFn, topSel());
   });
-  $("stage").addEventListener("pointerdown", e => { if(e.target === $("stage")) select(null); });
+  $("stage").addEventListener("pointerdown", e => { if(e.target === $("stage") && e.button === 0) select(null); });
+  initPan();
   new ResizeObserver(() => { renderCanvas(); view.status(); }).observe($("stage"));
   if(document.fonts) document.fonts.ready.then(() => renderCanvas());
 }

@@ -71,6 +71,14 @@ button,input,select,textarea{font:inherit;color:inherit}
 @media (hover:none){.node .tg{opacity:1}}
 .treebar{display:flex;gap:4px;padding:8px 14px;border-top:1px solid var(--line)}
 .treebar .btn{padding:4px 8px;font-size:12px}
+.treebar .btn[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:#000}
+.alignbar{display:flex;flex-wrap:wrap;gap:4px;padding:2px 14px 4px}
+.ib{display:grid;place-items:center;width:28px;height:26px;background:var(--panel-2);border:1px solid var(--line);border-radius:4px;cursor:pointer;color:var(--muted);padding:0}
+.ib:hover{border-color:var(--accent);color:var(--accent)}
+.ib svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:1.3;stroke-linejoin:round}
+.conv .btn small{color:var(--muted);font-family:var(--f-mono);font-size:10px;margin-left:4px}
+.stage.pan,.stage.pan *{cursor:grab!important}
+.stage.panning,.stage.panning *{cursor:grabbing!important}
 
 /* stage */
 .stage{grid-area:stage;position:relative;overflow:auto;background:var(--stage);background-image:radial-gradient(rgba(255,255,255,.05) 1px,transparent 1px);background-size:16px 16px;display:grid;padding:24px;min-height:0}
