@@ -5,30 +5,11 @@
    - 파티클·파편의 무작위 배치는 seed로 고정되어 다시 열어도, 내보내도 같다.
    - 키프레임 일부에 offset을 주면 모든 키프레임에 offset을 준다 (CSS 변환 단순화). */
 
-const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
-const f2 = v => +(+v).toFixed(2);
-export const hexA = (hex, a) => { const h = hex.replace("#",""); const [r,g,b] = [0,2,4].map(i => parseInt(h.substr(i,2),16) || 0); return `rgba(${r},${g},${b},${f2(clamp(a,0,1))})`; };
-function rng(seed){
-  let a = seed >>> 0;
-  return () => { a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
-}
-const STEP = "steps(1, end)";
-// 깜빡이는 구간 목록 [[시작, 끝], ...]을 계단식 키프레임으로 바꾼다
-const flicker = (wins, on, off) => {
-  const k = [{offset:0, ...off, easing:STEP}];
-  for(const [a, b] of wins){ k.push({offset:f2(a), ...on, easing:STEP}, {offset:f2(b), ...off, easing:STEP}); }
-  k.push({offset:1, ...off});
-  return k;
-};
-// first를 주면 첫 구간이 그 시점에 시작한다 (편집 화면 정지 장면에 보이도록)
-const windows = (rnd, n, len, first) => {
-  const w = []; let t = first ?? rnd() * .2;
-  for(let i = 0; i < n && t < .95; i++){ const l = len * (.5 + rnd()); w.push([t, Math.min(.99, t + l)]); t += l + .02 + rnd() * (.9 / n); }
-  return w;
-};
-const NOISE = `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 1.6 -.35'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")`;
+import { clamp, f2, hexA, rng, STEP, flicker, windows, NOISE } from "./vfx-util.js";
+import { extraEffects } from "./vfx-lib/index.js";
+export { hexA };
 
-export const VFX_CATEGORIES = ["빛", "홀로그램", "파티클", "에너지", "오류", "글리치", "파괴"];
+export const VFX_CATEGORIES = ["빛", "홀로그램", "파티클", "에너지", "날씨·자연", "테두리", "오류", "글리치", "파괴"];
 
 /* 효과 정의
    d: 기본 설정, clip: 요소 밖으로 나가지 않게 자름, poster: 편집 화면에서 보여 줄 순간(지속 시간 대비 비율, null이면 숨김),
@@ -186,6 +167,7 @@ export const EFFECTS = [
       {opacity:c.op, filter:"blur(0px) brightness(1)", transform:c.T("translateY(0px) scale(1)")},
       {opacity:0, filter:`blur(${f2(10*c.I)}px) brightness(${f2(1 + 1.5*c.I)})`, transform:c.T(`translateY(${f2(-24*c.I)}px) scale(${f2(1 + .08*c.I)})`)}]}})}
 ];
+EFFECTS.push(...extraEffects());
 export const EFFECT = Object.fromEntries(EFFECTS.map(e => [e.id, e]));
 
 export function newFx(id){
