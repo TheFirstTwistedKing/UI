@@ -1,6 +1,21 @@
 /* 오른쪽 패널: 선택한 요소의 속성 (CSS 기준) · 페이지 설정 */
 import { TYPES, FONTS, state, geo, view, $, esc, r3, get, descendants, snapshot, pushHistory, commit, autosave, toast } from "../core/state.js";
 import { renderCanvas, refreshNodes, computeLayout, parentRect, len } from "./canvas.js";
+import { group, ungroup, align, distribute } from "./edit.js";
+
+const AL = {
+  left:'<path d="M2 1v14M5 4h8v3H5zM5 9h5v3H5z"/>', hcenter:'<path d="M8 1v14M3 4h10v3H3zM5 9h6v3H5z"/>', right:'<path d="M14 1v14M3 4h8v3H3zM6 9h5v3H6z"/>',
+  top:'<path d="M1 2h14M4 5v8h3V5zM9 5v5h3V5z"/>', vcenter:'<path d="M1 8h14M4 3v10h3V3zM9 5v6h3V5z"/>', bottom:'<path d="M1 14h14M4 3v8h3V3zM9 6v5h3V6z"/>',
+  dh:'<path d="M1 2v12M15 2v12M5 5h2v6H5zM9 5h2v6H9z"/>', dv:'<path d="M2 1h12M2 15h12M5 5h6v2H5zM5 9h6v2H5z"/>'
+};
+const alBtn = (k, title) => `<button type="button" class="ib" data-al="${k}" title="${title}" aria-label="${title}"><svg viewBox="0 0 16 16">${AL[k]}</svg></button>`;
+function arrangeSec(multi){
+  return `<div class="sec"><h3>정렬 <small style="text-transform:none;letter-spacing:0">${multi ? "선택 영역 기준" : "부모 기준"}</small></h3>
+    <div class="alignbar">${alBtn("left","왼쪽 맞춤")}${alBtn("hcenter","가로 가운데")}${alBtn("right","오른쪽 맞춤")}${alBtn("top","위쪽 맞춤")}${alBtn("vcenter","세로 가운데")}${alBtn("bottom","아래쪽 맞춤")}
+    ${multi ? alBtn("dh","가로 간격 같게") + alBtn("dv","세로 간격 같게") : ""}</div>
+    <div class="conv"><button class="btn" type="button" data-cmd="group">그룹으로 묶기 <small>Ctrl+G</small></button>${get(state.sel)?.type === "group" && !multi ? `<button class="btn" type="button" data-cmd="ungroup">그룹 해제 <small>Ctrl+Shift+G</small></button>` : ""}</div>
+  </div>`;
+}
 
 const row = (label, ctl) => `<div class="row"><label>${label}</label><div class="ctl">${ctl}</div></div>`;
 const numI = (p, v, step, extra="") => `<input type="number" id="p-${p}" data-prop="${p}" data-kind="num" step="${step}" value="${v}" ${extra}>`;
@@ -24,7 +39,8 @@ function renderProps(){
     </div>
     <div class="sec"><h3>사용법</h3>
       <p class="note">왼쪽에서 요소를 삽입하고 캔버스에서 끌어 옮기거나 핸들로 크기를 바꿉니다. 위치와 크기는 px 또는 부모 기준 %로 지정할 수 있습니다.</p>
-      <p class="note">단축키 — Delete 삭제 · Ctrl+D 복제 · Ctrl+Z / Ctrl+Shift+Z 되돌리기·다시 · 방향키 1px 이동(Shift 10px) · Shift/Ctrl+클릭 다중 선택 · Ctrl+A 전체 선택 · Esc 선택 해제</p>
+      <p class="note">단축키 — Delete 삭제 · Ctrl+D 복제 · Ctrl+C / X / V 복사·잘라내기·붙여넣기 · Ctrl+G 그룹 · Ctrl+Shift+G 그룹 해제 · Ctrl+Z / Ctrl+Shift+Z 되돌리기·다시 · 방향키 1px 이동(Shift 10px) · Shift/Ctrl+클릭 다중 선택 · Ctrl+A 전체 선택 · Esc 선택 해제</p>
+      <p class="note">화면 — Ctrl+휠 확대·축소 · Ctrl+= / Ctrl+- 확대·축소 · Ctrl+0 화면 맞춤 · 스페이스+드래그 또는 휠 버튼 드래그로 이동. 휴대폰에서는 레이어 아래 '다중' 버튼을 켜면 여러 개를 고를 수 있습니다.</p>
       <p class="note">레이어의 자물쇠로 잠그면 캔버스에서 클릭·이동되지 않습니다. 눈 아이콘은 표시 여부를 바꿉니다.</p>
     </div>`;
     return;
@@ -35,7 +51,9 @@ function renderProps(){
     .concat(state.project.nodes.filter(x => !excl.has(x.id) && TYPES[x.type].container).map(x => `<option value="${x.id}"${x.id===n.parent?" selected":""}>${esc(x.props.name)} (${TYPES[x.type].label})</option>`));
   const g9 = [[0,0],[.5,0],[1,0],[0,.5],[.5,.5],[1,.5],[0,1],[.5,1],[1,1]]
     .map(([x,y]) => `<button type="button" data-align="${x},${y}" style="--x:${x};--y:${y}" title="부모 안에서 정렬 ${x}, ${y}"></button>`).join("");
-  let h = (state.sels.length > 1 ? `<p class="note" style="padding-top:10px">${state.sels.length}개 선택됨 · 아래 속성은 마지막으로 선택한 <b style="color:var(--accent)">${esc(p.name)}</b>에만 적용됩니다. 이동·복제·삭제는 선택한 전체에 적용됩니다.</p>` : "")
+  const multi = state.sels.length > 1;
+  let h = (multi ? `<p class="note" style="padding-top:10px">${state.sels.length}개 선택됨 · 아래 속성은 마지막으로 선택한 <b style="color:var(--accent)">${esc(p.name)}</b>에만 적용됩니다. 이동·복제·삭제·정렬은 선택한 전체에 적용됩니다.</p>` : "")
+  + arrangeSec(multi)
   + `<div class="sec"><h3>기본 <span class="cls" style="text-transform:none;letter-spacing:0">${t.label}</span></h3>
     ${row("이름", txtI("name", p.name))}
     ${row("부모", `<select id="p-parent" data-prop="parent" data-kind="parent">${parents.join("")}</select>`)}
@@ -49,7 +67,7 @@ function renderProps(){
     ${row("높이", unitI("h", p.h, p.hu))}
     ${row("회전 (deg)", numI("rotation", p.rotation, 1))}
     ${row("불투명도", alphaI("opacity", p.opacity))}
-    ${row("부모 안 정렬", `<div class="grid9">${g9}</div>`)}
+    ${row("부모 안 배치", `<div class="grid9">${g9}</div>`)}
   </div>
   <div class="sec"><h3>채우기</h3>
     ${row("색", colI("fill", p.fill))}
@@ -123,7 +141,7 @@ function applyField(t){
     const np = t.value || null; if(np === n.parent) return false;
     // 화면상 위치를 유지하도록 새 부모 기준 px 좌표로 다시 계산한다
     computeLayout();
-    const r = geo.L[n.id], npr = np ? geo.L[np] : geo.root;
+    const r = geo.L[n.id], npr = np ? geo.I[np] : geo.root;
     const arr = state.project.nodes, ids = [n.id, ...descendants(n.id)], moving = ids.map(get);
     moving.forEach(m => arr.splice(arr.indexOf(m), 1));
     n.parent = np; arr.push(...moving);
@@ -151,8 +169,10 @@ export function initProps(){
     if(t.dataset.rerender || ["unit","parent"].includes(t.dataset.kind)) renderProps();
   });
   el.addEventListener("click", e => {
-    const a = e.target.closest("[data-align]"), sg = e.target.closest("[data-seg]");
+    const a = e.target.closest("[data-align]"), sg = e.target.closest("[data-seg]"), al = e.target.closest("[data-al]"), cmd = e.target.closest("[data-cmd]");
     const n = get(state.sel); if(!n) return;
+    if(al){ const k = al.dataset.al; k === "dh" ? distribute("h") : k === "dv" ? distribute("v") : align(k); return; }
+    if(cmd){ cmd.dataset.cmd === "group" ? group() : ungroup(); return; }
     if(sg){ commit(() => n.props[sg.dataset.seg] = sg.dataset.val); return; }
     if(a){
       const [fx, fy] = a.dataset.align.split(",").map(Number);

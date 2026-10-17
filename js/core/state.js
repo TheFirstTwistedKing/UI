@@ -14,9 +14,9 @@ const LS_CUR = "uiforge.web.current", LS_SLOTS = "uiforge.web.slots", LS_PREF = 
 /* ---------- 상태 ---------- */
 let uid = 0;
 export const newId = () => "n" + Date.now().toString(36) + (uid++).toString(36);
-export const state = { project:null, sel:null, sels:[], snap:true, device:"1440", zoom:"fit" };
+export const state = { project:null, sel:null, sels:[], snap:true, device:"1440", zoom:"fit", multiTap:false };
 // 레이아웃 결과(아트보드 픽셀 좌표)와 화면 배율. canvas가 채운다.
-export const geo = { L:{}, root:{x:0,y:0,w:0,h:0}, scale:1 };
+export const geo = { L:{}, I:{}, root:{x:0,y:0,w:0,h:0}, scale:1 };
 // 각 편집기 모듈이 자기 렌더 함수를 여기에 등록한다 (모듈 간 순환 의존 방지)
 export const view = { canvas(){}, tree(){}, props(){}, status(){}, toolbar(){}, hint(){} };
 export function renderAll(){ view.toolbar(); view.canvas(); view.tree(); view.props(); view.status(); view.hint(); }

@@ -87,7 +87,7 @@ export function initTree(){
     const r = e.target.closest(".node"); if(!r) return;
     const tg = e.target.closest("[data-tg]"), n = get(r.dataset.id);
     if(tg && n){ const k = tg.dataset.tg; commit(() => n.props[k] = !n.props[k]); return; }
-    select(r.dataset.id || null, (e.shiftKey || e.ctrlKey || e.metaKey) && !!r.dataset.id);
+    select(r.dataset.id || null, (e.shiftKey || e.ctrlKey || e.metaKey || state.multiTap) && !!r.dataset.id);
   });
   $("upBtn").onclick = () => moveSibling(-1);
   $("downBtn").onclick = () => moveSibling(1);
