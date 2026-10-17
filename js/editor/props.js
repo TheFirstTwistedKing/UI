@@ -5,7 +5,8 @@ import { ORNAMENTS, ORNAMENT_CATEGORIES } from "../shapes/ornaments.js";
 import { renderCanvas, refreshNodes, computeLayout, parentRect, len } from "./canvas.js";
 import { group, ungroup, align, distribute } from "./edit.js";
 import { icon } from "./icons.js";
-import { PRESETS, PRESET, EASINGS, newAnim, normAnim } from "../fx/presets.js";
+import { PRESETS, PRESET, EASINGS, newAnim, normAnim, endTime, DEFAULT_KEYS } from "../fx/presets.js";
+import { parseColor, fmtColor } from "../core/color.js";
 import { EFFECTS, EFFECT, newFx, normFx } from "../fx/vfx.js";
 import { STYLE_KITS, kitAllowed } from "../core/styles.js";
 import { MODES, TRIGGERS, TRIGGER, ACTIONS, ACTION, newAction, modeSupport } from "../core/interact.js";
@@ -15,6 +16,7 @@ function animCard(raw, i){
   const a = normAnim(raw), p = PRESET[a.preset], A = `data-anim="${i}"`;
   const id = k => `a${i}-${k}`;
   const num = (k, v, step, extra="") => `<input type="number" id="${id(k)}" data-prop="${k}" data-kind="num" ${A} step="${step}" value="${v}" ${extra}>`;
+  const sld = (k, v, min, max, step) => slider(id(k), k, v, min, max, step, A);
   const sel = (k, v, opts, extra="") => `<select id="${id(k)}" data-prop="${k}" data-kind="enum" ${A} ${extra}>${opts.map(([val, lab]) => `<option value="${esc(val)}"${String(val)===String(v)?" selected":""}>${esc(lab)}</option>`).join("")}</select>`;
   const presetOpts = PRESETS.map(x => [x.id, `${x.cat} · ${x.name}`]);
   return `<div class="anim-card">
@@ -24,11 +26,25 @@ function animCard(raw, i){
     ${row("지연 (ms)", num("delay", a.delay, 50, 'min="0"'))}
     ${row("반복 (0=무한)", num("iterations", a.iterations, 1, 'min="0"'))}
     ${row("방향", sel("direction", a.direction, [["normal","정방향"],["reverse","역방향"],["alternate","왕복"],["alternate-reverse","역왕복"]]))}
-    ${row("이징", sel("easing", a.easing, EASINGS.some(([v]) => v === a.easing) ? EASINGS : EASINGS.concat([[a.easing, a.easing]])))}
-    ${row("강도", num("intensity", a.intensity, 0.1, 'min="0" max="3"'))}
-    ${row("속도", num("speed", a.speed, 0.25, 'min="0.1" max="5"'))}
+    ${row("시작 → 끝", `<span class="ro">${a.delay}ms → ${isFinite(endTime(a)) ? Math.round(endTime(a)) + "ms" : "무한 반복"}</span>`)}
+    ${row("이징", sel("easing", a.easing, EASINGS.some(([v]) => v === a.easing) ? EASINGS : EASINGS.concat([[a.easing, "직접: " + a.easing]]), 'data-rerender="1"'))}
+    ${row("이징 직접", `<input type="text" id="${id("ease")}" data-prop="easing" data-kind="easing" ${A} value="${esc(a.easing)}" placeholder="cubic-bezier(.2,.8,.2,1)" spellcheck="false">`)}
+    ${row("강도", sld("intensity", a.intensity, 0, 3, 0.05))}
+    ${row("속도", sld("speed", a.speed, 0.1, 5, 0.05))}
+    ${p.keys ? keysTable(a, i) : ""}
     ${row("시작·끝 상태", sel("fill", a.fill, [["none","원래 상태"],["both","시작 전·끝난 뒤 유지"],["backwards","시작 전 첫 상태"],["forwards","끝난 뒤 마지막 상태"]]))}
     ${p.color ? row("색", `<input type="color" id="${id("color")}-c" data-prop="color" data-kind="color" ${A} value="${a.color}"><input type="text" id="${id("color")}" data-prop="color" data-kind="color" ${A} value="${a.color}" spellcheck="false">`) : ""}
+  </div>`;
+}
+
+// 직접 만든 애니메이션의 키프레임 표: 시점(%) · 위치 X/Y(px) · 배율 · 회전(deg) · 불투명도(0~1)
+function keysTable(a, i){
+  const keys = a.keys && a.keys.length ? a.keys : DEFAULT_KEYS();
+  const cell = (j, k, v, step, extra = "") => `<input type="number" data-prop="${k}" data-kind="num" data-anim="${i}" data-key="${j}" step="${step}" value="${v}" aria-label="${k}" ${extra}>`;
+  return `<div class="keys"><div class="keys-h"><span>%</span><span>X</span><span>Y</span><span>배율</span><span>회전</span><span>투명</span><span></span></div>
+    ${keys.map((k, j) => `<div class="keys-r">${cell(j, "o", k.o, 1, 'min="0" max="100"')}${cell(j, "x", k.x, 1)}${cell(j, "y", k.y, 1)}${cell(j, "s", k.s, 0.05, 'min="0"')}${cell(j, "r", k.r, 1)}${cell(j, "op", k.op, 0.05, 'min="0" max="1"')}
+      <button type="button" class="ib" data-key-del="${j}" data-anim="${i}" title="키프레임 삭제" aria-label="키프레임 삭제"${keys.length <= 2 ? " disabled" : ""}>${icon("close")}</button></div>`).join("")}
+    <div class="conv" style="padding:4px 0 0"><button class="btn" type="button" data-cmd="addKey" data-anim="${i}">${icon("plus")}키프레임 추가</button></div>
   </div>`;
 }
 
@@ -37,6 +53,7 @@ function fxCard(raw, i){
   const f = normFx(raw), e = EFFECT[f.effect], A = `data-fx="${i}"`;
   const id = k => `v${i}-${k}`;
   const num = (k, v, step, extra="") => `<input type="number" id="${id(k)}" data-prop="${k}" data-kind="num" ${A} step="${step}" value="${v}" ${extra}>`;
+  const sld = (k, v, min, max, step) => slider(id(k), k, v, min, max, step, A);
   const opts = EFFECTS.map(x => `<option value="${x.id}"${x.id === f.effect ? " selected" : ""}>${esc(x.cat)} · ${esc(x.name)}</option>`).join("");
   return `<div class="anim-card fx-card">
     <div class="anim-head"><b>${esc(e.name)}</b><small>${esc(e.cat)}</small><button type="button" class="ib" data-fx-del="${i}" title="이 효과 삭제" aria-label="이 효과 삭제">${icon("close")}</button></div>
@@ -44,9 +61,9 @@ function fxCard(raw, i){
     ${row("지속 (ms)", num("duration", f.duration, 50, 'min="1"'))}
     ${row("지연 (ms)", num("delay", f.delay, 50, 'min="0"'))}
     ${row("반복 (0=무한)", num("iterations", f.iterations, 1, 'min="0"'))}
-    ${row("강도", num("intensity", f.intensity, 0.1, 'min="0" max="3"'))}
-    ${row("속도", num("speed", f.speed, 0.25, 'min="0.1" max="5"'))}
-    ${e.density ? row("밀도", num("density", f.density, 0.25, 'min="0" max="4"')) : ""}
+    ${row("강도", sld("intensity", f.intensity, 0, 3, 0.05))}
+    ${row("속도", sld("speed", f.speed, 0.1, 5, 0.05))}
+    ${e.density ? row("밀도", sld("density", f.density, 0, 4, 0.05)) : ""}
     ${e.color ? row(e.cat === "파괴" ? "색 (채우기 없을 때)" : "색", `<input type="color" id="${id("color")}-c" data-prop="color" data-kind="color" ${A} value="${f.color}"><input type="text" id="${id("color")}" data-prop="color" data-kind="color" ${A} value="${f.color}" spellcheck="false">`) : ""}
     ${e.density || e.cat === "글리치" || e.cat === "파괴" || e.id === "staticNoise" ? row("배치", `<button class="btn" type="button" data-cmd="reseed" data-fx="${i}">무작위 다시 배치</button>`) : ""}
   </div>`;
@@ -124,10 +141,24 @@ function actCard(x, i, n){
   </div>`;
 }
 
+const BLENDS = [["normal","보통"],["multiply","곱하기"],["screen","스크린"],["overlay","오버레이"],["darken","어둡게"],["lighten","밝게"],["color-dodge","색 닷지"],["color-burn","색 번"],
+  ["hard-light","하드 라이트"],["soft-light","소프트 라이트"],["difference","차이"],["exclusion","제외"],["hue","색조"],["saturation","채도"],["color","색상"],["luminosity","광도"]];
+// 슬라이더 + 숫자 입력 한 쌍. 슬라이더는 범위 안에서, 숫자 입력은 범위 밖 값도 받는다.
+// 숫자 입력은 0 이상 범위면 최솟값을, 0~1 범위(불투명도 등)면 최댓값도 지킨다.
+function slider(id, k, v, min, max, step, attrs = ""){
+  const lim = (min >= 0 ? ` min="${min}"` : "") + (max === 1 ? ` max="1"` : "");
+  return `<div class="rng"><input type="range" id="${id}-r" data-prop="${k}" data-kind="num" ${attrs} min="${min}" max="${max}" step="${step}" value="${v}" aria-label="${k} 슬라이더"><input type="number" id="${id}" data-prop="${k}" data-kind="num" ${attrs} step="${step}" value="${r3(v)}"${lim}></div>`;
+}
+const sldI = (p, v, min, max, step) => slider(`p-${p}`, p, v, min, max, step);
+// 색 표기 (HEX · RGB · HSL): 어떤 표기로 입력해도 되고, 보여 줄 표기는 브라우저에 기억한다
+const CFMT_KEY = "uiforge.web.colorfmt";
+let cfmt = "hex";
+try{ cfmt = localStorage.getItem(CFMT_KEY) || "hex"; }catch(e){}
+
 const row = (label, ctl) => `<div class="row"><label>${label}</label><div class="ctl">${ctl}</div></div>`;
 const numI = (p, v, step, extra="") => `<input type="number" id="p-${p}" data-prop="${p}" data-kind="num" step="${step}" value="${v}" ${extra}>`;
 const txtI = (p, v) => `<input type="text" id="p-${p}" data-prop="${p}" data-kind="text" value="${esc(v)}">`;
-const colI = (p, v) => `<input type="color" id="p-${p}-c" data-prop="${p}" data-kind="color" value="${v}"><input type="text" id="p-${p}" data-prop="${p}" data-kind="color" value="${v}" spellcheck="false">`;
+const colI = (p, v) => `<input type="color" id="p-${p}-c" data-prop="${p}" data-kind="color" value="${v}"><input type="text" id="p-${p}" data-prop="${p}" data-kind="color" value="${fmtColor(v, cfmt)}" spellcheck="false" title="HEX · rgb() · hsl() 어느 표기든 입력할 수 있습니다">`;
 const boolI = (p, v, extra="") => `<input type="checkbox" id="p-${p}" data-prop="${p}" data-kind="bool" ${v?"checked":""} ${extra}>`;
 const enumI = (p, v, opts) => `<select id="p-${p}" data-prop="${p}" data-kind="enum">${opts.map(o => { const [val, lab] = Array.isArray(o) ? o : [o, o]; return `<option value="${esc(val)}"${String(val)===String(v)?" selected":""}>${esc(lab)}</option>`; }).join("")}</select>`;
 const alphaI = (p, v) => numI(p, v, 0.05, 'min="0" max="1"');
@@ -168,14 +199,18 @@ function renderProps(){
     ${row("부모", `<select id="p-parent" data-prop="parent" data-kind="parent">${parents.join("")}</select>`)}
     ${row("표시", boolI("visible", p.visible))}
     ${row("잠금", boolI("locked", p.locked, 'data-rerender="1"'))}
+    ${row("쌓는 순서", `<div class="zbar">${[["back","맨 뒤로"],["backward","뒤로"],["forward","앞으로"],["front","맨 앞으로"]].map(([k, l]) => `<button class="btn" type="button" data-z="${k}">${l}</button>`).join("")}</div>`)}
   </div>
-  <div class="sec"><h3>위치 · 크기</h3>
+  <div class="sec"><h3>위치 · 크기 · 변형</h3>
     ${row("X", unitI("x", p.x, p.xu))}
     ${row("Y", unitI("y", p.y, p.yu))}
     ${row("너비", unitI("w", p.w, p.wu))}
     ${row("높이", unitI("h", p.h, p.hu))}
-    ${row("회전 (deg)", numI("rotation", p.rotation, 1))}
-    ${row("불투명도", alphaI("opacity", p.opacity))}
+    ${row("회전 (deg)", sldI("rotation", p.rotation, -180, 180, 1))}
+    ${row("배율 X", sldI("scaleX", p.scaleX ?? 1, 0.05, 4, 0.01))}
+    ${row("배율 Y", sldI("scaleY", p.scaleY ?? 1, 0.05, 4, 0.01))}
+    ${row("불투명도", sldI("opacity", p.opacity, 0, 1, 0.01))}
+    ${row("섞기 모드", enumI("blend", p.blend || "normal", BLENDS))}
     ${row("부모 안 배치", `<div class="grid9">${g9}</div>`)}
   </div>
   ${t.shape ? `<div class="sec"><h3>도형</h3>
@@ -184,22 +219,30 @@ function renderProps(){
   </div>` : ""}
   ${t.deco ? `<div class="sec"><h3>장식</h3>
     ${row("모양", `<select id="p-deco" data-prop="deco" data-kind="enum">${ORNAMENT_CATEGORIES.map(c => `<optgroup label="${c}">${ORNAMENTS.filter(o => o.cat === c).map(o => `<option value="${o.id}"${o.id === p.deco ? " selected" : ""}>${esc(o.name)}</option>`).join("")}</optgroup>`).join("")}</select>`)}
-    ${row("선 두께 (px)", numI("lineWidth", p.lineWidth, 0.5, 'min="0.5"'))}
+    ${row("선 두께 (px)", sldI("lineWidth", p.lineWidth, 0.5, 12, 0.1))}
   </div>` : ""}
   <div class="sec"><h3>${t.deco ? "색" : "채우기"}</h3>
     ${row("색", colI("fill", p.fill))}
-    ${row("불투명도", alphaI("fillAlpha", p.fillAlpha))}
+    ${row("불투명도", sldI("fillAlpha", p.fillAlpha, 0, 1, 0.01))}
+    ${row("색 표기", `<div class="seg" role="group">${[["hex","HEX"],["rgb","RGB"],["hsl","HSL"]].map(([v, l]) => `<button type="button" data-cfmt="${v}" aria-pressed="${cfmt === v}">${l}</button>`).join("")}</div>`)}
   </div>
   ${t.deco ? "" : `<div class="sec"><h3>${t.shape ? "선" : "모서리 · 테두리"}</h3>
-    ${n.type === "ellipse" || t.shape ? "" : row("모서리 (px)", numI("radius", p.radius, 1, 'min="0"'))}
-    ${row("두께 (px)", numI("borderWidth", p.borderWidth, 1, 'min="0" data-rerender="1"'))}
+    ${n.type === "ellipse" || t.shape ? "" : row("모서리 (px)", sldI("radius", p.radius, 0, 200, 1))}
+    ${row("두께 (px)", slider("p-borderWidth", "borderWidth", p.borderWidth, 0, 20, 0.5, 'data-rerender="1"'))}
     ${p.borderWidth > 0 ? row("스타일", enumI("borderStyle", p.borderStyle, [["solid","실선"],["dashed","파선"],["dotted","점선"]].concat(t.shape ? [] : [["double","이중선"]]))) + row("색", colI("borderColor", p.borderColor)) : ""}
   </div>`}
   <div class="sec"><h3>그림자</h3>
     ${row("사용", boolI("shadowOn", p.shadowOn, 'data-rerender="1"'))}
     ${p.shadowOn ? row("X / Y", `<div class="ud">${numI("shadowX", p.shadowX, 1)}${numI("shadowY", p.shadowY, 1)}</div>`)
-      + row("흐림 / 확산", `<div class="ud">${numI("shadowBlur", p.shadowBlur, 1, 'min="0"')}${numI("shadowSpread", p.shadowSpread, 1)}</div>`)
-      + row("색", colI("shadowColor", p.shadowColor)) + row("불투명도", alphaI("shadowAlpha", p.shadowAlpha)) : ""}
+      + row("흐림", sldI("shadowBlur", p.shadowBlur, 0, 120, 1)) + (t.shape || t.deco ? "" : row("확산", sldI("shadowSpread", p.shadowSpread, -40, 60, 1)))
+      + row("색", colI("shadowColor", p.shadowColor)) + row("불투명도", sldI("shadowAlpha", p.shadowAlpha, 0, 1, 0.01)) : ""}
+  </div>
+  <div class="sec"><h3>글로우</h3>
+    ${row("사용", boolI("glowOn", p.glowOn, 'data-rerender="1"'))}
+    ${p.glowOn ? row("색", colI("glowColor", p.glowColor)) + row("흐림", sldI("glowBlur", p.glowBlur, 0, 120, 1))
+      + (t.text || t.shape || t.deco ? "" : row("확산", sldI("glowSpread", p.glowSpread, -20, 60, 1)))
+      + row("불투명도", sldI("glowAlpha", p.glowAlpha, 0, 1, 0.01)) : ""}
+    ${p.glowOn ? `<p class="note">${t.text ? "글자 둘레에 빛을 냅니다." : t.shape || t.deco ? "모양 테두리를 따라 빛을 냅니다." : "상자 둘레에 빛을 냅니다."}</p>` : ""}
   </div>`;
   if(kitAllowed(t)) h += kitSec(n, multi);
   if(t.container) h += `<div class="sec"><h3>레이아웃</h3>${row("넘침 자르기", boolI("clip", p.clip))}</div>`;
@@ -207,10 +250,10 @@ function renderProps(){
     h += `<div class="sec"><h3>텍스트</h3>
       ${row("내용", `<textarea id="p-text" data-prop="text" data-kind="text" rows="3">${esc(p.text)}</textarea>`)}
       ${row("글꼴", enumI("font", p.font, FONTS.map(f => [f, f.replace(/"/g,"")])))}
-      ${row("크기 (px)", numI("fontSize", p.fontSize, 1, 'min="1"'))}
+      ${row("크기 (px)", sldI("fontSize", p.fontSize, 6, 200, 1))}
       ${row("굵기", enumI("fontWeight", p.fontWeight, [[300,"300 Light"],[400,"400 Regular"],[500,"500 Medium"],[600,"600 SemiBold"],[700,"700 Bold"],[900,"900 Black"]]))}
-      ${row("줄 간격", numI("lineHeight", p.lineHeight, 0.05, 'min="0.5"'))}
-      ${row("자간 (px)", numI("letterSpacing", p.letterSpacing, 0.5))}
+      ${row("줄 간격", sldI("lineHeight", p.lineHeight, 0.6, 3, 0.05))}
+      ${row("자간 (px)", sldI("letterSpacing", p.letterSpacing, -5, 30, 0.5))}
       ${row("색", colI("color", p.color))}
       ${row("가로 정렬", segI("align", p.align, [["left","왼쪽"],["center","가운데"],["right","오른쪽"]]))}
       ${row("세로 정렬", segI("valign", p.valign, [["top","위"],["center","가운데"],["bottom","아래"]]))}
@@ -249,6 +292,7 @@ function applyField(t){
   const n = get(state.sel);
   let scope = t.dataset.scope === "page" ? state.project.page : n && n.props;
   if(scope && t.dataset.anim !== undefined){ scope.anims[+t.dataset.anim] = normAnim(scope.anims[+t.dataset.anim]); scope = scope.anims[+t.dataset.anim]; }
+  if(scope && t.dataset.key !== undefined){ scope.keys = (scope.keys || DEFAULT_KEYS()).map(k => ({...k})); scope = scope.keys[+t.dataset.key]; if(!scope) return false; }
   if(scope && t.dataset.act !== undefined) scope = scope.actions[+t.dataset.act];
   if(scope && t.dataset.fx !== undefined){ scope.fx[+t.dataset.fx] = normFx(scope.fx[+t.dataset.fx]); scope = scope.fx[+t.dataset.fx]; }
   if(!scope) return false;
@@ -265,15 +309,17 @@ function applyField(t){
   }
   if(k === "num"){
     let v = parseFloat(t.value); if(isNaN(v)) return false;
-    if(t.min !== "") v = Math.max(+t.min, v); if(t.max !== "") v = Math.min(+t.max, v);
+    if(t.min !== "" && t.type !== "range") v = Math.max(+t.min, v); if(t.max !== "" && t.type !== "range") v = Math.min(+t.max, v);
     scope[p] = v;
+    // 같은 칸의 슬라이더와 숫자 입력을 맞춘다
+    t.closest(".ctl, .keys-r")?.querySelectorAll(`[data-prop="${p}"][data-kind="num"]`).forEach(o => { if(o !== t) o.value = o.type === "range" ? v : r3(v); });
   } else if(k === "text"){ if(p === "src" && t.value === "(올린 파일)") return false; scope[p] = t.value; }
   else if(k === "color"){
-    let v = t.value.trim(); if(v[0] !== "#") v = "#" + v;
-    if(!/^#[0-9a-f]{6}$/i.test(v)) return false;
-    scope[p] = v.toLowerCase();
-    t.closest(".ctl").querySelectorAll(`[data-prop="${p}"][data-kind="color"]`).forEach(o => { if(o !== t) o.value = v.toLowerCase(); });
+    const v = parseColor(t.value); if(!v) return false;
+    scope[p] = v;
+    t.closest(".ctl").querySelectorAll(`[data-prop="${p}"][data-kind="color"]`).forEach(o => { if(o !== t) o.value = o.type === "color" ? v : fmtColor(v, cfmt); });
   }
+  else if(k === "easing"){ const v = t.value.trim(); if(!v || !CSS.supports("transition-timing-function", v)) return false; scope[p] = v; }
   else if(k === "bool"){ scope[p] = t.checked; }
   else if(k === "enum"){ scope[p] = /^\d+$/.test(t.value) ? +t.value : t.value; }
   else if(k === "unit"){
@@ -318,6 +364,8 @@ export function initProps(){
   el.addEventListener("keydown", e => { const h3 = e.target.closest(".sec > h3"); if(h3 && (e.key === "Enter" || e.key === " ")){ e.preventDefault(); toggleSection(h3); } });
   el.addEventListener("click", e => {
     const h3 = e.target.closest(".sec > h3"); if(h3){ toggleSection(h3); return; }
+    const cf = e.target.closest("[data-cfmt]");
+    if(cf){ cfmt = cf.dataset.cfmt; try{ localStorage.setItem(CFMT_KEY, cfmt); }catch(err){} renderProps(); return; }
     const md = e.target.closest("[data-mode]");
     if(md){ commit(() => { const pg = state.project.page, s = new Set(pg.modes || ["gui"]); s.has(md.dataset.mode) ? s.delete(md.dataset.mode) : s.add(md.dataset.mode); pg.modes = MODES.map(m => m.id).filter(m => s.has(m)); }); return; }
     const a = e.target.closest("[data-align]"), sg = e.target.closest("[data-seg]"), al = e.target.closest("[data-al]"), cmd = e.target.closest("[data-cmd]");
@@ -325,6 +373,10 @@ export function initProps(){
     if(al){ const k = al.dataset.al; k === "dh" ? distribute("h") : k === "dv" ? distribute("v") : align(k); return; }
     const del = e.target.closest("[data-anim-del]");
     if(del){ commit(() => n.props.anims.splice(+del.dataset.animDel, 1)); return; }
+    const z = e.target.closest("[data-z]");
+    if(z){ zOrder(n, z.dataset.z); return; }
+    const kdel = e.target.closest("[data-key-del]");
+    if(kdel){ commit(() => { const a = n.props.anims[+kdel.dataset.anim]; if(a && a.keys && a.keys.length > 2) a.keys.splice(+kdel.dataset.keyDel, 1); }); return; }
     const xdel = e.target.closest("[data-act-del]");
     if(xdel){ commit(() => n.props.actions.splice(+xdel.dataset.actDel, 1)); return; }
     const fdel = e.target.closest("[data-fx-del]");
@@ -333,6 +385,12 @@ export function initProps(){
       const c = cmd.dataset.cmd;
       if(c === "group") group(); else if(c === "ungroup") ungroup();
       else if(c === "addAnim") view.showView("motion"); else if(c === "addFx") view.showView("fx");
+      else if(c === "addKey") commit(() => {
+        const a = n.props.anims[+cmd.dataset.anim]; if(!a) return;
+        // 마지막 두 키프레임 사이 가운데에 새 키프레임을 넣는다 (값은 앞 키프레임을 따른다)
+        const ks = (a.keys || DEFAULT_KEYS()).slice().sort((x, y) => x.o - y.o), last = ks[ks.length - 1], prev = ks[ks.length - 2] || {o:0};
+        ks.splice(ks.length - 1, 0, {...prev, o:Math.round((prev.o + last.o) / 2)}); a.keys = ks;
+      });
       else if(c === "addAct") commit(() => (n.props.actions ||= []).push(newAction((state.project.page.modes || ["gui"])[0])));
       else if(c === "kitsDown") commit(() => { for(const d of descendants(n.id).map(get)){
         const q = d.props; if(kitAllowed(TYPES[d.type]) && (q.fillAlpha > 0 || q.borderWidth > 0)) q.styleKits = [...(n.props.styleKits || [])];
@@ -360,6 +418,14 @@ export function initProps(){
       });
     }
   });
+}
+
+// 같은 부모 안에서 쌓는 순서를 바꾼다 (배열 뒤쪽이 위에 그려진다)
+function zOrder(n, how){
+  const arr = state.project.nodes, sibs = arr.filter(x => x.parent === n.parent), i = sibs.indexOf(n);
+  const j = Math.max(0, Math.min(sibs.length - 1, how === "back" ? 0 : how === "front" ? sibs.length - 1 : i + (how === "forward" ? 1 : -1)));
+  if(j === i) return;
+  commit(() => { arr.splice(arr.indexOf(n), 1); const b = arr.indexOf(sibs[j]) + (j > i ? 1 : 0); arr.splice(b, 0, n); });
 }
 
 function loadFile(input){

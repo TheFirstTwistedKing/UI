@@ -1,5 +1,5 @@
 /* 프로젝트 → 독립 실행 HTML/CSS. 요소는 페이지 컨테이너 안에 절대 위치로 배치하고, 단위(px/%)는 편집기와 같게 유지한다. */
-import { TYPES, state, geo, kidsMap } from "../core/state.js";
+import { TYPES, state, geo, kidsMap, rgba, baseTransform } from "../core/state.js";
 import { build } from "../fx/presets.js";
 import { buildFx, containerCSS } from "../fx/vfx.js";
 import { ANGLE, ANGLE_RULE } from "../fx/vfx-util.js";
@@ -77,7 +77,9 @@ export function rules(n){
     for(const [k, v] of Object.entries(boxLook(n))) r.push(`${k}:${v}`); // 디자인 스타일 키트 포함
   }
   if(p.opacity < 1) r.push(`opacity:${num(p.opacity)}`);
-  if(p.rotation) r.push(`transform:rotate(${num(p.rotation)}deg)`);
+  const bt = baseTransform(p); if(bt) r.push(`transform:${bt}`);
+  if(p.blend && p.blend !== "normal") r.push(`mix-blend-mode:${p.blend}`);
+  if(t.text && p.glowOn) r.push(`text-shadow:0 0 ${num(p.glowBlur)}px ${rgba(p.glowColor, p.glowAlpha)}`);
   if(p.clip) r.push("overflow:hidden");
   if(t.text){
     r.push("flex-direction:column", `justify-content:${{top:"flex-start",center:"center",bottom:"flex-end"}[p.valign]}`,

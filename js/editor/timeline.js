@@ -27,9 +27,12 @@ function renderTimeline(){
   const rows = [];
   const row = (n, name, a, end, cls) => {
     const left = a.delay / R * 100, width = isFinite(end) ? (end - a.delay) / R * 100 : 100 - left;
+    // 직접 만든 키프레임은 첫 반복 구간 위에 마름모로 표시한다
+    const one = a.duration / (a.speed || 1), span = isFinite(end) ? end - a.delay : R - a.delay;
+    const marks = a.keys ? a.keys.map(k => `<i class="tl-kf" style="left:${Math.min(100, one * k.o / 100 / (span || 1) * 100)}%"></i>`).join("") : "";
     rows.push(`<div class="tl-row${state.sels.includes(n.id) ? " on" : ""}" data-id="${n.id}">
       <div class="tl-label" title="${esc(n.props.name)} · ${esc(name)}"><span>${esc(n.props.name)}</span><small>${esc(name)}</small></div>
-      <div class="tl-lane"><div class="tl-bar${cls}${isFinite(end) ? "" : " inf"}" style="left:${left}%;width:${Math.max(.5, width)}%" title="${esc(name)} · ${a.delay}ms 지연 · ${a.duration}ms${a.iterations > 0 ? " × " + a.iterations : " 무한 반복"}"></div></div>
+      <div class="tl-lane"><div class="tl-bar${cls}${isFinite(end) ? "" : " inf"}" style="left:${left}%;width:${Math.max(.5, width)}%" title="${esc(name)} · ${a.delay}ms 지연 · ${a.duration}ms${a.iterations > 0 ? " × " + a.iterations : " 무한 반복"}">${marks}</div></div>
     </div>`);
   };
   for(const n of state.project.nodes){

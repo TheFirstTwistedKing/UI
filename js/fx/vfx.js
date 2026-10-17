@@ -7,6 +7,7 @@
 
 import { clamp, f2, hexA, rng, STEP, flicker, windows, NOISE } from "./vfx-util.js";
 import { extraEffects } from "./vfx-lib/index.js";
+import { baseTransform } from "../core/state.js";
 export { hexA };
 
 export const VFX_CATEGORIES = ["빛", "홀로그램", "파티클", "에너지", "날씨·자연", "테두리", "오류", "글리치", "파괴", "우주·천체", "신성", "시스템·버추얼"];
@@ -181,9 +182,9 @@ export const normFx = f => EFFECT[f.effect] ? Object.assign(newFx(f.effect), f) 
 export function buildFx(props, f, box){
   f = normFx(f);
   const e = EFFECT[f.effect], speed = f.speed > 0 ? f.speed : 1, D = Math.max(1, f.duration / speed);
-  const rot = props.rotation || 0;
+  const bt = baseTransform(props);
   const c = {I:Math.max(0, +f.intensity || 0), D:clamp(+f.density || 0, 0, 4), color:f.color, rnd:rng(f.seed), w:box.w || 100, h:box.h || 100,
-    op:props.opacity ?? 1, T:s => (rot ? `rotate(${rot}deg) ` : "") + s,
+    op:props.opacity ?? 1, T:s => (bt ? bt + " " : "") + s,
     fill:props.fillAlpha > 0 ? hexA(props.fill, props.fillAlpha) : f.color};
   const out = e.make(c), iters = f.iterations > 0 ? f.iterations : Infinity;
   const timing = {duration:D, delay:Math.max(0, f.delay), iterations:iters};

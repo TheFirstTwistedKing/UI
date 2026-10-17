@@ -6,6 +6,7 @@ export const ORNAMENT_CATEGORIES = ["구분선", "모서리", "프레임", "HUD"
 // 장식 SVG 공용 스타일 (편집기와 내보내기가 함께 쓴다)
 export const ORN_CSS = ".o-s{fill:none;stroke:currentColor;stroke-width:var(--sw,1.5px);vector-effect:non-scaling-stroke;stroke-linecap:round;stroke-linejoin:round}.o-f{fill:currentColor}.o-d{stroke-dasharray:6 5}.o-t{stroke-dasharray:0 6}.o-g{stroke-width:calc(var(--sw,1.5px)*4.5);opacity:.14}.o-g2{stroke-width:calc(var(--sw,1.5px)*2.2);opacity:.3}";
 
+import { shapeShadow } from "./shapes.js";
 const f = n => +(+n).toFixed(2);
 const rad = d => d * Math.PI / 180;
 const P = (x, y) => `${f(x)} ${f(y)}`;
@@ -278,6 +279,6 @@ const hexA = (hex, a) => { const h = hex.replace("#", ""); const [r, g, b] = [0,
 export const ornColor = p => p.fillAlpha >= 1 ? p.fill : hexA(p.fill, Math.max(0, p.fillAlpha));
 // 편집기용 SVG (스타일을 속성에 담는다). 내보내기는 클래스 규칙으로 같은 값을 준다.
 export function ornamentMarkup(p, cls = "orn"){
-  const o = ornamentOf(p.deco), sh = p.shadowOn ? `;filter:drop-shadow(${p.shadowX}px ${p.shadowY}px ${p.shadowBlur / 2}px ${hexA(p.shadowColor, p.shadowAlpha)})` : "";
+  const o = ornamentOf(p.deco), f = shapeShadow(p), sh = f ? `;filter:${f}` : "";
   return `<svg class="${cls}" viewBox="0 0 ${o.vb[0]} ${o.vb[1]}" preserveAspectRatio="none" aria-hidden="true" style="color:${ornColor(p)};--sw:${p.lineWidth}px${o.clip ? ";overflow:hidden" : ""}${sh}">${o.svg}</svg>`;
 }

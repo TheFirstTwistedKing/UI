@@ -222,6 +222,7 @@ button,input,select,textarea{font:inherit;color:inherit}
 .tl-bar{position:absolute;top:6px;bottom:6px;border-radius:3px;background:linear-gradient(90deg,rgba(115,226,236,.55),rgba(115,226,236,.3));border:1px solid rgba(115,226,236,.7);cursor:pointer}
 .tl-bar.inf{background:repeating-linear-gradient(135deg,rgba(115,226,236,.42) 0 6px,rgba(115,226,236,.18) 6px 12px);border-right-style:dashed}
 .tl-row.on .tl-bar{box-shadow:0 0 10px rgba(115,226,236,.35)}
+.tl-kf{position:absolute;top:50%;width:7px;height:7px;margin:-3.5px 0 0 -3.5px;background:var(--fg);border:1px solid var(--accent-strong);transform:rotate(45deg);pointer-events:none}
 .tl-bar.fx{background:linear-gradient(90deg,rgba(82,163,238,.5),rgba(82,163,238,.25));border-color:rgba(82,163,238,.75)}
 .tl-bar.fx.inf{background:repeating-linear-gradient(135deg,rgba(82,163,238,.4) 0 6px,rgba(82,163,238,.16) 6px 12px)}
 .tl-row.on .tl-bar.fx{box-shadow:0 0 10px rgba(82,163,238,.35)}
@@ -328,6 +329,21 @@ pre.code{margin:0;background:#060B15;border:1px solid var(--line);border-radius:
   .app.rcol .right{visibility:hidden;border:0;overflow:hidden}
 }
 @media (max-width:900px){ .ibtn.pane{display:none} }
+
+/* ---------- 정밀 편집: 슬라이더 · 순서 · 키프레임 표 ---------- */
+.rng{display:grid;grid-template-columns:minmax(0,1fr) 64px;gap:6px;align-items:center;width:100%}
+.rng input[type=range]{width:100%;min-width:0;margin:0;accent-color:var(--accent);height:18px;background:transparent}
+.zbar{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:3px;width:100%}
+.zbar .btn{padding:4px 2px;font-size:var(--t-xs);justify-content:center}
+.keys{margin:4px 10px 2px;font-size:var(--t-xs)}
+.keys-h,.keys-r{display:grid;grid-template-columns:1.2fr repeat(5,minmax(0,1fr)) 22px;gap:3px;align-items:center}
+.keys-h{color:var(--faint);padding:0 2px 3px}
+.keys-r{margin-bottom:3px}
+.keys-r input{width:100%;min-width:0;background:var(--panel-2);border:1px solid var(--line);border-radius:3px;padding:3px 3px;font-family:var(--f-mono);font-size:10.5px}
+.keys-r input{-moz-appearance:textfield;appearance:textfield}
+.keys-r input::-webkit-inner-spin-button,.keys-r input::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
+.keys-r input:focus{border-color:var(--accent);outline:none}
+.keys-r .ib{width:22px;height:22px}
 
 /* ---------- 디자인 스타일 칩 ---------- */
 .kits{display:flex;flex-wrap:wrap;gap:4px;padding:2px 14px 6px}

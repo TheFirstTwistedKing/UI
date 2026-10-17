@@ -215,7 +215,12 @@ export function shapeStroke(p){
   const w = p.borderWidth, dash = p.borderStyle === "dashed" ? ` stroke-dasharray="${w * 3} ${w * 2}"` : p.borderStyle === "dotted" ? ` stroke-dasharray="0 ${w * 2}" stroke-linecap="round"` : "";
   return ` stroke="${p.borderColor}" stroke-width="${w}" stroke-linejoin="round" vector-effect="non-scaling-stroke"${dash}`;
 }
-export function shapeShadow(p){ return p.shadowOn ? `drop-shadow(${p.shadowX}px ${p.shadowY}px ${p.shadowBlur / 2}px ${hexA(p.shadowColor, p.shadowAlpha)})` : ""; }
+export function shapeShadow(p){
+  const f = [];
+  if(p.shadowOn) f.push(`drop-shadow(${p.shadowX}px ${p.shadowY}px ${p.shadowBlur / 2}px ${hexA(p.shadowColor, p.shadowAlpha)})`);
+  if(p.glowOn) f.push(`drop-shadow(0 0 ${p.glowBlur / 2}px ${hexA(p.glowColor, p.glowAlpha)})`);
+  return f.join(" ");
+}
 export function shapeMarkup(p, cls = "shp"){
   const s = shapeOf(p.shape), f = shapeShadow(p);
   return `<svg class="${cls}" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"${f ? ` style="filter:${f}"` : ""}><path d="${s.d}" fill="${shapeFill(p)}"${s.evenodd ? ' fill-rule="evenodd"' : ""}${shapeStroke(p)}/></svg>`;

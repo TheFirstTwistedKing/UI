@@ -8,8 +8,9 @@ const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const hexA = (hex, a) => { const h = hex.replace("#",""); const [r,g,b] = [0,2,4].map(i => parseInt(h.substr(i,2),16) || 0); return `rgba(${r},${g},${b},${a})`; };
 
 import { extraPresets } from "./anim-library.js";
+import { baseTransform } from "../core/state.js";
 
-export const CATEGORIES = ["등장", "퇴장", "강조", "이동", "회전", "크기", "변형", "페이드", "글로우", "색·필터", "진동", "파동", "궤도", "디지털 전환", "홀로그램", "글리치"];
+export const CATEGORIES = ["직접 만들기", "등장", "퇴장", "강조", "이동", "회전", "크기", "변형", "페이드", "글로우", "색·필터", "진동", "파동", "궤도", "디지털 전환", "홀로그램", "글리치"];
 
 export const PRESETS = [
   {id:"fadeIn", name:"페이드 인", cat:"등장", d:{duration:600, easing:"ease-out", iterations:1, fill:"both"},
@@ -70,11 +71,17 @@ export const PRESETS = [
       .map(([o,x,y,clip,h]) => ({offset:o, easing:"steps(1, end)", transform:c.T(`translate(${x*I}px, ${y*I}px)`), clipPath:clip, filter:`hue-rotate(${h*I}deg)`}))}
 ];
 PRESETS.push(...extraPresets(EASE, clamp, hexA));
+/* 직접 만들기: 사용자가 키프레임(위치·배율·회전·불투명도)을 하나씩 정한다. 키프레임은 애니메이션 설정의 keys에 저장된다. */
+export const DEFAULT_KEYS = () => [{o:0, x:0, y:0, s:1, r:0, op:0}, {o:100, x:0, y:0, s:1, r:0, op:1}];
+PRESETS.unshift({id:"custom", name:"키프레임 직접 만들기", cat:"직접 만들기", keys:true, d:{duration:1200, easing:"ease-in-out", iterations:1, fill:"both"},
+  kf:(I, c) => [...(c.keys && c.keys.length >= 2 ? c.keys : DEFAULT_KEYS())].sort((a, b) => a.o - b.o).map(k => ({
+    offset:clamp(k.o, 0, 100) / 100, opacity:clamp(c.op * k.op, 0, 1),
+    transform:c.T(`translate(${k.x * I}px, ${k.y * I}px) rotate(${k.r * I}deg) scale(${1 + (k.s - 1) * I})`)}))});
 export const PRESET = Object.fromEntries(PRESETS.map(p => [p.id, p]));
 
 export function newAnim(id){
   const p = PRESET[id];
-  return Object.assign({preset:id, duration:1000, delay:0, iterations:1, direction:"normal", easing:"ease", intensity:1, speed:1, fill:"none", color:"#e9d8a6"}, p.d);
+  return Object.assign({preset:id, duration:1000, delay:0, iterations:1, direction:"normal", easing:"ease", intensity:1, speed:1, fill:"none", color:"#e9d8a6"}, p.d, p.keys ? {keys:DEFAULT_KEYS()} : {});
 }
 // 저장된 값에 빠진 항목을 채운다
 export const normAnim = a => Object.assign(newAnim(PRESET[a.preset] ? a.preset : "fadeIn"), a, PRESET[a.preset] ? {} : {preset:"fadeIn"});
@@ -82,8 +89,8 @@ export const normAnim = a => Object.assign(newAnim(PRESET[a.preset] ? a.preset :
 // 요소 속성과 애니메이션 설정으로 키프레임과 타이밍을 만든다 (편집기와 내보내기가 함께 쓴다)
 export function build(props, a){
   a = normAnim(a);
-  const rot = props.rotation || 0;
-  const c = {op:props.opacity ?? 1, color:a.color, T:s => (rot ? `rotate(${rot}deg) ` : "") + s};
+  const bt = baseTransform(props);
+  const c = {op:props.opacity ?? 1, color:a.color, keys:a.keys, T:s => (bt ? bt + " " : "") + s};
   const speed = a.speed > 0 ? a.speed : 1;
   return {
     keyframes: PRESET[a.preset].kf(Math.max(0, +a.intensity || 0), c),
