@@ -4,6 +4,7 @@ export const TYPES = {
   rect:   {label:"사각형", abbr:"Rc", container:true},
   ellipse:{label:"원",     abbr:"El"},
   shape:  {label:"도형",   abbr:"Sh", shape:true},
+  deco:   {label:"장식",   abbr:"Dc", deco:true},
   text:   {label:"텍스트", abbr:"Tx", text:true},
   image:  {label:"이미지", abbr:"Im", image:true},
   group:  {label:"그룹",   abbr:"Gr", container:true}
@@ -32,6 +33,7 @@ export function makeProps(type){
     clip:false, anims:[], fx:[]};
   if(type === "ellipse") Object.assign(p, {w:160, h:160});
   if(t.shape) Object.assign(p, {w:160, h:160, shape:"star5", fill:"#e9d8a6"});
+  if(t.deco) Object.assign(p, {w:320, h:24, deco:"lineDiamond", fill:"#e9d8a6", lineWidth:1.5});
   if(type === "group") Object.assign(p, {w:400, h:280, fillAlpha:0});
   if(t.text) Object.assign(p, {w:320, h:60, fillAlpha:0, text:"텍스트", color:"#ffffff", font:FONTS[0], fontSize:24, fontWeight:500,
     lineHeight:1.3, letterSpacing:0, align:"left", valign:"top"});

@@ -4,6 +4,7 @@ import { build } from "../fx/presets.js";
 import { buildFx, containerCSS } from "../fx/vfx.js";
 import { ANGLE, ANGLE_RULE } from "../fx/vfx-util.js";
 import { shapeOf, shapeFill, shapeShadow } from "../shapes/shapes.js";
+import { ornamentOf, ornColor, ORN_CSS } from "../shapes/ornaments.js";
 
 const escH = s => String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const num = v => String(+(+v).toFixed(3));
@@ -69,7 +70,7 @@ function classNames(nodes){
 function rules(n){
   const p = n.props, t = TYPES[n.type], r = [];
   r.push("position:absolute", `left:${num(p.x)}${p.xu}`, `top:${num(p.y)}${p.yu}`, `width:${num(p.w)}${p.wu}`, `height:${num(p.h)}${p.hu}`);
-  if(!t.shape){ // 도형은 SVG가 채우기·선·그림자를 맡는다 (shapeRules)
+  if(!t.shape && !t.deco){ // 도형·장식은 SVG가 채우기·선·그림자를 맡는다 (shapeRules, decoRules)
     if(p.fillAlpha > 0) r.push(`background:${p.fillAlpha >= 1 ? p.fill : rgba(p.fill, p.fillAlpha)}`);
     if(n.type === "ellipse") r.push("border-radius:50%");
     else if(p.radius > 0) r.push(`border-radius:${num(p.radius)}px`);
@@ -104,6 +105,12 @@ function shapeRules(n, cls){
   r.push(`.${cls}>svg path{${path.join(";")}}`);
   return r;
 }
+// 장식: 색과 선 두께를 svg에 주고, 선·면 모양은 공용 규칙(ORN_CSS)이 맡는다
+function decoRules(n, cls){
+  const p = n.props, o = ornamentOf(p.deco), f = shapeShadow(p);
+  return [`.${cls}>svg{position:absolute;inset:0;width:100%;height:100%;overflow:${o.clip ? "hidden" : "visible"};color:${ornColor(p)};--sw:${num(p.lineWidth)}px${f ? `;filter:${f}` : ""}}`];
+}
+const decoHTML = p => { const o = ornamentOf(p.deco); return `<svg viewBox="0 0 ${o.vb[0]} ${o.vb[1]}" preserveAspectRatio="none" aria-hidden="true">${o.svg}</svg>`; };
 const shapeHTML = p => `<svg viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"><path d="${shapeOf(p.shape).d}"/></svg>`;
 
 // 요소 크기: 편집기가 계산해 둔 값을 쓰고, 없으면 px 값 또는 기본값
@@ -121,11 +128,13 @@ export function exportCSS(){
       frames.push(...an.blocks, ...fx.blocks);
       out.push(`/* ${n.props.name.replace(/\*\//g, "")} */\n.${cls[n.id]}{${r.join(";")}}`, ...fx.rules);
       if(TYPES[n.type].shape) out.push(...shapeRules(n, cls[n.id]));
+      if(TYPES[n.type].deco) out.push(...decoRules(n, cls[n.id]));
       if(TYPES[n.type].image) out.push(`.${cls[n.id]} img{display:block;width:100%;height:100%;object-fit:${n.props.fit};border-radius:inherit}`);
       w(n.id);
     }
   })("_");
   if(frames.length) out.push(...frames, `@media (prefers-reduced-motion:reduce){.page *{animation:none!important}}`);
+  if(P.nodes.some(n => TYPES[n.type].deco)) out.splice(3, 0, ORN_CSS);
   const css = out.join("\n");
   return css.includes(ANGLE) ? ANGLE_RULE + "\n" + css : css;
 }
@@ -136,7 +145,7 @@ export function exportHTML(){
     const pad = "  ".repeat(depth);
     for(const n of km[pid]||[]){
       const p = n.props, t = TYPES[n.type];
-      const inner = t.text ? escH(p.text) : t.image && p.src ? `<img src="${escH(p.src)}" alt="">` : t.shape ? shapeHTML(p) : "";
+      const inner = t.text ? escH(p.text) : t.image && p.src ? `<img src="${escH(p.src)}" alt="">` : t.shape ? shapeHTML(p) : t.deco ? decoHTML(p) : "";
       const kids = km[n.id], fx = effects(n, cls[n.id], boxOf(n)).html;
       if(kids && kids.length){
         lines.push(`${pad}<div class="${cls[n.id]}">${inner}`);

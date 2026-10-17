@@ -136,7 +136,7 @@ button,input,select,textarea{font:inherit;color:inherit}
 .el.hid{opacity:.22;outline:1px dashed rgba(255,255,255,.5)}
 .el.lock{pointer-events:none}
 .el .tx{position:absolute;inset:0;display:flex;flex-direction:column;overflow:hidden;pointer-events:none;white-space:pre-wrap;word-break:keep-all;overflow-wrap:anywhere}
-.el .shp{position:absolute;inset:0;width:100%;height:100%;overflow:visible;pointer-events:none;display:block}
+.el .shp,.el .orn{position:absolute;inset:0;width:100%;height:100%;overflow:visible;pointer-events:none;display:block}
 .el .img{position:absolute;inset:0;width:100%;height:100%;border-radius:inherit;pointer-events:none;display:block}
 .el .imgph{position:absolute;inset:0;display:grid;place-items:center;border-radius:inherit;background-image:repeating-linear-gradient(45deg,rgba(255,255,255,.08) 0 6px,transparent 6px 12px);border:1px dashed rgba(255,255,255,.3);font-family:var(--f-mono);color:rgba(255,255,255,.6);overflow:hidden;pointer-events:none;text-align:center}
 .ov{position:absolute;inset:0;pointer-events:none;z-index:2147483000}
@@ -246,6 +246,8 @@ button,input,select,textarea{font:inherit;color:inherit}
 .lib-item.shape .sw{display:grid;place-items:center;width:40px;height:40px}
 .lib-item.shape svg{width:34px;height:34px;overflow:visible;fill:var(--muted);transition:fill .15s var(--ease),transform .2s var(--ease)}
 .lib-item.shape:hover svg{fill:var(--accent);transform:scale(1.08)}
+.lib-item.orn-i svg{fill:none;color:var(--muted);--sw:1.2px}
+.lib-item.orn-i:hover svg{color:var(--accent)}
 .lib-foot{border-top:1px solid var(--line);padding:8px 10px 10px;display:flex;flex-direction:column;gap:8px}
 .lib-foot p{margin:0;font-size:var(--t-xs);color:var(--muted);line-height:1.5}
 .lib-foot .btn{justify-content:center}
@@ -289,10 +291,13 @@ pre.code{margin:0;background:#030303;border:1px solid var(--line);border-radius:
 @keyframes toastIn{from{opacity:0;transform:translate(-50%,8px)}to{opacity:1;transform:translate(-50%,0)}}
 
 /* ---------- 좁은 화면 ---------- */
-@media (max-width:1100px){
-  .app{grid-template-columns:240px minmax(0,1fr) 270px}
+/* 삽입 도구가 7개라 1500px 아래에서는 아이콘만 보인다 (이름은 툴팁) */
+@media (max-width:1500px){
   .tools button span{display:none}
   .tools button{padding:0 7px}
+}
+@media (max-width:1100px){
+  .app{grid-template-columns:240px minmax(0,1fr) 270px}
 }
 @media (max-width:900px){
   body{overflow:auto}

@@ -1,6 +1,7 @@
 /* 오른쪽 패널: 선택한 요소의 속성 (CSS 기준) · 페이지 설정 */
 import { TYPES, FONTS, state, geo, view, $, esc, r3, get, descendants, snapshot, pushHistory, commit, autosave, toast } from "../core/state.js";
 import { SHAPES, SHAPE_CATEGORIES } from "../shapes/shapes.js";
+import { ORNAMENTS, ORNAMENT_CATEGORIES } from "../shapes/ornaments.js";
 import { renderCanvas, refreshNodes, computeLayout, parentRect, len } from "./canvas.js";
 import { group, ungroup, align, distribute } from "./edit.js";
 import { icon } from "./icons.js";
@@ -141,15 +142,19 @@ function renderProps(){
     ${row("모양", `<select id="p-shape" data-prop="shape" data-kind="enum">${SHAPE_CATEGORIES.map(c => `<optgroup label="${c}">${SHAPES.filter(s => s.cat === c).map(s => `<option value="${s.id}"${s.id === p.shape ? " selected" : ""}>${esc(s.name)}</option>`).join("")}</optgroup>`).join("")}</select>`)}
     <p class="note">왼쪽 '도형' 탭에서 모양을 골라 새로 넣을 수도 있습니다.</p>
   </div>` : ""}
-  <div class="sec"><h3>채우기</h3>
+  ${t.deco ? `<div class="sec"><h3>장식</h3>
+    ${row("모양", `<select id="p-deco" data-prop="deco" data-kind="enum">${ORNAMENT_CATEGORIES.map(c => `<optgroup label="${c}">${ORNAMENTS.filter(o => o.cat === c).map(o => `<option value="${o.id}"${o.id === p.deco ? " selected" : ""}>${esc(o.name)}</option>`).join("")}</optgroup>`).join("")}</select>`)}
+    ${row("선 두께 (px)", numI("lineWidth", p.lineWidth, 0.5, 'min="0.5"'))}
+  </div>` : ""}
+  <div class="sec"><h3>${t.deco ? "색" : "채우기"}</h3>
     ${row("색", colI("fill", p.fill))}
     ${row("불투명도", alphaI("fillAlpha", p.fillAlpha))}
   </div>
-  <div class="sec"><h3>${t.shape ? "선" : "모서리 · 테두리"}</h3>
+  ${t.deco ? "" : `<div class="sec"><h3>${t.shape ? "선" : "모서리 · 테두리"}</h3>
     ${n.type === "ellipse" || t.shape ? "" : row("모서리 (px)", numI("radius", p.radius, 1, 'min="0"'))}
     ${row("두께 (px)", numI("borderWidth", p.borderWidth, 1, 'min="0" data-rerender="1"'))}
     ${p.borderWidth > 0 ? row("스타일", enumI("borderStyle", p.borderStyle, [["solid","실선"],["dashed","파선"],["dotted","점선"]].concat(t.shape ? [] : [["double","이중선"]]))) + row("색", colI("borderColor", p.borderColor)) : ""}
-  </div>
+  </div>`}
   <div class="sec"><h3>그림자</h3>
     ${row("사용", boolI("shadowOn", p.shadowOn, 'data-rerender="1"'))}
     ${p.shadowOn ? row("X / Y", `<div class="ud">${numI("shadowX", p.shadowX, 1)}${numI("shadowY", p.shadowY, 1)}</div>`)

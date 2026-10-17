@@ -100,8 +100,10 @@
         <div class="empty-state"><b>버튼, 카드, 패널, 입력창, 게이지</b>처럼 바로 쓸 수 있는 구성 요소가 여기에 들어옵니다.<span>Phase 6 라이브러리 확장에서 추가</span></div>
       </section>
       <section class="view" data-view="ornament" hidden>
-        <div class="ph">장식</div>
-        <div class="empty-state"><b>장식선, 테두리 장식, 홀로그램 장식, 기하학 패턴</b>이 여기에 들어옵니다.<span>Phase 6 라이브러리 확장에서 추가</span></div>
+        <div class="ph">장식 <small id="decoCount"></small></div>
+        <div class="lib-search"><input type="search" id="decoSearch" placeholder="이름·분류로 찾기" aria-label="장식 찾기"></div>
+        <div class="lib shapes" id="decoLib"></div>
+        <div class="lib-foot"><p id="decoHint"></p></div>
       </section>
       <section class="view" data-view="motion" hidden>
         <div class="ph">애니메이션 <small id="animCount"></small></div>
