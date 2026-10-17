@@ -1,5 +1,5 @@
 /* 왼쪽 패널 '애니메이션'·'VFX' 탭: 항목 목록 · 견본 미리보기 · 선택 요소에 적용 */
-import { state, view, $, esc, get, commit, toast } from "../core/state.js";
+import { state, view, $, esc, get, commit, toast, onFirstShow } from "../core/state.js";
 import { PRESETS, CATEGORIES, newAnim } from "../fx/presets.js";
 import { EFFECTS, VFX_CATEGORIES, newFx } from "../fx/vfx.js";
 import { setPreview, swatch, setFxPreview, fxSwatch } from "../fx/engine.js";
@@ -14,7 +14,7 @@ function library(cfg){
     h += `<div class="lib-cat" data-cat="${cat}">${cat} <small>${items.length}</small></div>`;
     h += items.map(p => `<button type="button" class="lib-item${cfg.cls ? " " + cfg.cls : ""}" data-item="${p.id}" aria-pressed="false"><span class="sw"><i></i></span><span class="nm">${esc(p.name)}</span></button>`).join("");
   }
-  lib.innerHTML = h;
+  onFirstShow(lib, () => { lib.innerHTML = h; });
   $(cfg.ids.count).textContent = cfg.items.length + "종";
   const sw = id => lib.querySelector(`[data-item="${id}"] .sw i`);
   function updateFoot(){

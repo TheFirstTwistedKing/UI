@@ -12,7 +12,7 @@ import { registerAngle } from "./vfx-util.js";
 registerAngle(); // 원뿔 그라디언트 회전 각도가 보간되도록
 
 export const player = { t:0, playing:false, active:false, rate:1, loop:true };
-let anims = [], raf = 0, last = 0;
+let anims = [], raf = 0, last = 0, tickR = 5000; // tickR: 재생 중에 쓰는 타임라인 길이 (프레임마다 다시 계산하지 않는다)
 let previewId = null, previewAnims = [];
 let fxPreviewId = null, fxPreview = [], fxPreviewTimer = 0;
 let elementFor = () => null;
@@ -63,7 +63,7 @@ const fxContainers = () => document.querySelectorAll("#screen .vfx:not(.pv)");
 function clear(){ anims.forEach(a => a.cancel()); anims = []; }
 // 캔버스를 다시 그린 뒤 호출된다
 export function attach(){
-  clear();
+  clear(); tickR = range();
   mountAll();
   if(player.active){
     fxContainers().forEach(stopPoster);
@@ -85,7 +85,7 @@ function seekAll(){ for(const a of anims) a.currentTime = player.t; view.clock()
 function tick(now){
   const dt = now - last; last = now;
   player.t += dt * player.rate;
-  const R = range();
+  const R = tickR;
   if(player.t >= R){
     if(player.loop) player.t %= R;
     else { player.t = R; seekAll(); pause(); return; }
@@ -97,7 +97,7 @@ export function play(){
   if(player.playing) return;
   if(!player.active){ player.active = true; attach(); }
   if(player.t >= range()) player.t = 0;
-  player.playing = true; last = performance.now();
+  player.playing = true; last = performance.now(); tickR = range();
   raf = requestAnimationFrame(tick);
   view.clock();
 }
@@ -114,6 +114,8 @@ export function setRate(r){ player.rate = r; }
 /* ---------- 라이브러리 미리보기 (저장하지 않는 임시 재생) ---------- */
 // 선택한 요소에 프리셋을 반복 재생해 적용 전에 확인한다. 등장·퇴장처럼 한 번 끝나는 효과는 쉬었다가 다시 재생한다.
 export function setPreview(id){ previewId = id; attachPreview(); }
+// 선택이 바뀌면 고른 견본을 새 선택 요소에서 다시 재생한다
+export function refreshPreview(){ attachPreview(); attachFxPreview(); }
 function attachPreview(){
   previewAnims.forEach(a => a.cancel()); previewAnims = [];
   if(!previewId) return;
