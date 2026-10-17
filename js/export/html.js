@@ -67,7 +67,7 @@ function classNames(nodes){
   return map;
 }
 
-function rules(n){
+export function rules(n){
   const p = n.props, t = TYPES[n.type], r = [];
   r.push("position:absolute", `left:${num(p.x)}${p.xu}`, `top:${num(p.y)}${p.yu}`, `width:${num(p.w)}${p.wu}`, `height:${num(p.h)}${p.hu}`);
   if(!t.shape && !t.deco){ // 도형·장식은 SVG가 채우기·선·그림자를 맡는다 (shapeRules, decoRules)
