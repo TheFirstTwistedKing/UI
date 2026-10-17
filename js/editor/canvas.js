@@ -54,7 +54,9 @@ export function renderCanvas(){
   })("_", scr, geo.root);
   ovEl = document.createElement("div"); ovEl.className = "ov"; ovEl.innerHTML = overlayHTML();
   scr.appendChild(ovEl);
+  view.anim();
 }
+export const elementFor = id => elMap[id] || null;
 
 // 지정한 요소와 그 자손만 다시 칠한다 (드래그·속성 입력 중 전체 DOM 재생성 방지)
 export function refreshNodes(ids){
@@ -63,6 +65,7 @@ export function refreshNodes(ids){
   for(const id of ids){ all.add(id); descendants(id).forEach(d => all.add(d)); }
   for(const id of all){ const n = get(id), el = elMap[id]; if(!n || !el){ renderCanvas(); return; } paint(el, n, parentRect(n)); }
   if(ovEl) ovEl.innerHTML = overlayHTML();
+  view.anim();
 }
 
 function paint(d, n, pr){

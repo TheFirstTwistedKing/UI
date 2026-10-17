@@ -18,8 +18,8 @@ export const state = { project:null, sel:null, sels:[], snap:true, device:"1440"
 // 레이아웃 결과(아트보드 픽셀 좌표)와 화면 배율. canvas가 채운다.
 export const geo = { L:{}, I:{}, root:{x:0,y:0,w:0,h:0}, scale:1 };
 // 각 편집기 모듈이 자기 렌더 함수를 여기에 등록한다 (모듈 간 순환 의존 방지)
-export const view = { canvas(){}, tree(){}, props(){}, status(){}, toolbar(){}, hint(){} };
-export function renderAll(){ view.toolbar(); view.canvas(); view.tree(); view.props(); view.status(); view.hint(); }
+export const view = { canvas(){}, tree(){}, props(){}, status(){}, toolbar(){}, hint(){}, anim(){}, timeline(){}, clock(){}, showView(){}, leaveMotion(){} };
+export function renderAll(){ view.toolbar(); view.canvas(); view.tree(); view.props(); view.status(); view.hint(); view.timeline(); }
 
 export function makeProps(type){
   const t = TYPES[type];
@@ -28,7 +28,7 @@ export function makeProps(type){
     fill:"#1c1c1f", fillAlpha:1, radius:0,
     borderWidth:0, borderStyle:"solid", borderColor:"#e9d8a6",
     shadowOn:false, shadowX:0, shadowY:8, shadowBlur:24, shadowSpread:0, shadowColor:"#000000", shadowAlpha:0.5,
-    clip:false};
+    clip:false, anims:[]};
   if(type === "ellipse") Object.assign(p, {w:160, h:160});
   if(type === "group") Object.assign(p, {w:400, h:280, fillAlpha:0});
   if(t.text) Object.assign(p, {w:320, h:60, fillAlpha:0, text:"텍스트", color:"#ffffff", font:FONTS[0], fontSize:24, fontWeight:500,
@@ -82,7 +82,7 @@ export function select(id, toggle){
     if(state.sels.includes(id)){ state.sels = state.sels.filter(x => x !== id); state.sel = state.sels[state.sels.length-1] || null; }
     else { state.sels.push(id); state.sel = id; }
   } else { state.sel = id; state.sels = id ? [id] : []; }
-  view.canvas(); view.tree(); view.props(); view.status(); view.hint();
+  view.canvas(); view.tree(); view.props(); view.status(); view.hint(); view.timeline();
 }
 
 /* ---------- 히스토리 ---------- */

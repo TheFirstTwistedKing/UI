@@ -3,6 +3,29 @@ import { TYPES, FONTS, state, geo, view, $, esc, r3, get, descendants, snapshot,
 import { renderCanvas, refreshNodes, computeLayout, parentRect, len } from "./canvas.js";
 import { group, ungroup, align, distribute } from "./edit.js";
 import { icon } from "./icons.js";
+import { PRESETS, PRESET, EASINGS, newAnim, normAnim } from "../fx/presets.js";
+
+// 애니메이션 한 개의 설정 카드. 입력의 data-anim으로 몇 번째 애니메이션인지 구분한다.
+function animCard(raw, i){
+  const a = normAnim(raw), p = PRESET[a.preset], A = `data-anim="${i}"`;
+  const id = k => `a${i}-${k}`;
+  const num = (k, v, step, extra="") => `<input type="number" id="${id(k)}" data-prop="${k}" data-kind="num" ${A} step="${step}" value="${v}" ${extra}>`;
+  const sel = (k, v, opts, extra="") => `<select id="${id(k)}" data-prop="${k}" data-kind="enum" ${A} ${extra}>${opts.map(([val, lab]) => `<option value="${esc(val)}"${String(val)===String(v)?" selected":""}>${esc(lab)}</option>`).join("")}</select>`;
+  const presetOpts = PRESETS.map(x => [x.id, `${x.cat} · ${x.name}`]);
+  return `<div class="anim-card">
+    <div class="anim-head"><b>${esc(p.name)}</b><small>${esc(p.cat)}</small><button type="button" class="ib" data-anim-del="${i}" title="이 애니메이션 삭제" aria-label="이 애니메이션 삭제">${icon("close")}</button></div>
+    ${row("효과", sel("preset", a.preset, presetOpts, 'data-rerender="1"'))}
+    ${row("지속 (ms)", num("duration", a.duration, 50, 'min="1"'))}
+    ${row("지연 (ms)", num("delay", a.delay, 50, 'min="0"'))}
+    ${row("반복 (0=무한)", num("iterations", a.iterations, 1, 'min="0"'))}
+    ${row("방향", sel("direction", a.direction, [["normal","정방향"],["reverse","역방향"],["alternate","왕복"],["alternate-reverse","역왕복"]]))}
+    ${row("이징", sel("easing", a.easing, EASINGS.some(([v]) => v === a.easing) ? EASINGS : EASINGS.concat([[a.easing, a.easing]])))}
+    ${row("강도", num("intensity", a.intensity, 0.1, 'min="0" max="3"'))}
+    ${row("속도", num("speed", a.speed, 0.25, 'min="0.1" max="5"'))}
+    ${row("시작·끝 상태", sel("fill", a.fill, [["none","원래 상태"],["both","시작 전·끝난 뒤 유지"],["backwards","시작 전 첫 상태"],["forwards","끝난 뒤 마지막 상태"]]))}
+    ${p.color ? row("색", `<input type="color" id="${id("color")}-c" data-prop="color" data-kind="color" ${A} value="${a.color}"><input type="text" id="${id("color")}" data-prop="color" data-kind="color" ${A} value="${a.color}" spellcheck="false">`) : ""}
+  </div>`;
+}
 
 // 접힌 섹션 제목 목록 (브라우저에 기억)
 const COLLAPSE_KEY = "uiforge.web.collapsed";
@@ -121,6 +144,11 @@ function renderProps(){
       ${row("세로 정렬", segI("valign", p.valign, [["top","위"],["center","가운데"],["bottom","아래"]]))}
     </div>`;
   }
+  h += `<div class="sec"><h3>애니메이션 <small style="text-transform:none;letter-spacing:0">${(p.anims||[]).length}개</small></h3>
+    ${(p.anims||[]).map(animCard).join("")}
+    <div class="conv"><button class="btn" type="button" data-cmd="addAnim">${icon("plus")}애니메이션 추가</button></div>
+    <p class="note">여러 개를 넣으면 같은 속성(예: 위치·크기)은 아래쪽 애니메이션이 우선합니다. 하단 타임라인에서 재생해 확인하세요.</p>
+  </div>`;
   if(t.image){
     h += `<div class="sec"><h3>이미지</h3>
       ${row("주소 (URL)", txtI("src", p.src.startsWith("data:") ? "(올린 파일)" : p.src))}
@@ -137,9 +165,15 @@ let focusSnap = null;
 const propsEl = () => $("props");
 function applyField(t){
   const n = get(state.sel);
-  const scope = t.dataset.scope === "page" ? state.project.page : n && n.props;
+  let scope = t.dataset.scope === "page" ? state.project.page : n && n.props;
+  if(scope && t.dataset.anim !== undefined){ scope.anims[+t.dataset.anim] = normAnim(scope.anims[+t.dataset.anim]); scope = scope.anims[+t.dataset.anim]; }
   if(!scope) return false;
   const k = t.dataset.kind, p = t.dataset.prop;
+  // 효과를 바꾸면 그 효과의 기본 타이밍으로 맞추고 지연·강도·속도·색은 유지한다
+  if(t.dataset.anim !== undefined && p === "preset"){
+    const keep = {delay:scope.delay, intensity:scope.intensity, speed:scope.speed, color:scope.color};
+    Object.assign(scope, newAnim(t.value), keep); return true;
+  }
   if(k === "num"){
     let v = parseFloat(t.value); if(isNaN(v)) return false;
     if(t.min !== "") v = Math.max(+t.min, v); if(t.max !== "") v = Math.min(+t.max, v);
@@ -149,7 +183,7 @@ function applyField(t){
     let v = t.value.trim(); if(v[0] !== "#") v = "#" + v;
     if(!/^#[0-9a-f]{6}$/i.test(v)) return false;
     scope[p] = v.toLowerCase();
-    propsEl().querySelectorAll(`[data-prop="${p}"][data-kind="color"]`).forEach(o => { if(o !== t) o.value = v.toLowerCase(); });
+    t.closest(".ctl").querySelectorAll(`[data-prop="${p}"][data-kind="color"]`).forEach(o => { if(o !== t) o.value = v.toLowerCase(); });
   }
   else if(k === "bool"){ scope[p] = t.checked; }
   else if(k === "enum"){ scope[p] = /^\d+$/.test(t.value) ? +t.value : t.value; }
@@ -180,7 +214,7 @@ export function initProps(){
   el.addEventListener("focusin", () => { focusSnap = snapshot(); });
   el.addEventListener("input", e => {
     const t = e.target; if(!t.dataset.prop || t.dataset.kind === "parent" || t.dataset.kind === "unit") return;
-    if(applyField(t)){ t.dataset.scope === "page" ? renderCanvas() : refreshNodes([state.sel]); if(["name","visible","locked"].includes(t.dataset.prop)) view.tree(); view.status(); }
+    if(applyField(t)){ t.dataset.scope === "page" ? renderCanvas() : refreshNodes([state.sel]); if(["name","visible","locked"].includes(t.dataset.prop)) view.tree(); if(t.dataset.anim !== undefined) view.timeline(); view.status(); }
   });
   el.addEventListener("change", e => {
     const t = e.target;
@@ -189,7 +223,7 @@ export function initProps(){
     applyField(t);
     if(focusSnap) pushHistory(focusSnap);
     focusSnap = snapshot();
-    renderCanvas(); view.tree(); view.status(); autosave();
+    renderCanvas(); view.tree(); view.status(); view.timeline(); autosave();
     if(t.dataset.rerender || ["unit","parent"].includes(t.dataset.kind)) renderProps();
   });
   el.addEventListener("keydown", e => { const h3 = e.target.closest(".sec > h3"); if(h3 && (e.key === "Enter" || e.key === " ")){ e.preventDefault(); toggleSection(h3); } });
@@ -198,7 +232,9 @@ export function initProps(){
     const a = e.target.closest("[data-align]"), sg = e.target.closest("[data-seg]"), al = e.target.closest("[data-al]"), cmd = e.target.closest("[data-cmd]");
     const n = get(state.sel); if(!n) return;
     if(al){ const k = al.dataset.al; k === "dh" ? distribute("h") : k === "dv" ? distribute("v") : align(k); return; }
-    if(cmd){ cmd.dataset.cmd === "group" ? group() : ungroup(); return; }
+    const del = e.target.closest("[data-anim-del]");
+    if(del){ commit(() => n.props.anims.splice(+del.dataset.animDel, 1)); return; }
+    if(cmd){ const c = cmd.dataset.cmd; c === "group" ? group() : c === "ungroup" ? ungroup() : view.showView("motion"); return; }
     if(sg){ commit(() => n.props[sg.dataset.seg] = sg.dataset.val); return; }
     if(a){
       const [fx, fy] = a.dataset.align.split(",").map(Number);

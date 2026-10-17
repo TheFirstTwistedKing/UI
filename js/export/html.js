@@ -1,8 +1,31 @@
 /* 프로젝트 → 독립 실행 HTML/CSS. 요소는 페이지 컨테이너 안에 절대 위치로 배치하고, 단위(px/%)는 편집기와 같게 유지한다. */
 import { TYPES, state, rgba, kidsMap } from "../core/state.js";
+import { build } from "../fx/presets.js";
 
 const escH = s => String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const num = v => String(+(+v).toFixed(3));
+const kebab = s => s.replace(/[A-Z]/g, m => "-" + m.toLowerCase());
+
+// 편집기와 같은 키프레임을 CSS @keyframes로 옮긴다. offset이 없으면 고르게 나눈다.
+function keyframesCSS(name, kfs){
+  const n = kfs.length;
+  return `@keyframes ${name}{` + kfs.map((k, i) => {
+    const off = k.offset ?? (n === 1 ? 1 : i / (n - 1));
+    const decl = Object.entries(k).filter(([p]) => p !== "offset").map(([p, v]) => p === "easing" ? `animation-timing-function:${v}` : `${kebab(p)}:${v}`).join(";");
+    return `${+(off*100).toFixed(2)}%{${decl}}`;
+  }).join("") + "}";
+}
+function animations(n, cls){
+  const list = n.props.anims || [];
+  if(!list.length || !n.props.visible) return {decl:null, blocks:[]};
+  const blocks = [], parts = [];
+  list.forEach((a, i) => {
+    const {keyframes, timing:t} = build(n.props, a), name = `${cls}-a${i+1}`;
+    blocks.push(keyframesCSS(name, keyframes));
+    parts.push(`${name} ${num(t.duration)}ms ${t.easing} ${num(t.delay)}ms ${isFinite(t.iterations) ? t.iterations : "infinite"} ${t.direction} ${t.fill}`);
+  });
+  return {decl:`animation:${parts.join(",")}`, blocks};
+}
 
 // 이름에서 CSS 클래스 이름을 만든다. 영문이 없으면 유형+번호를 쓴다.
 function classNames(nodes){
@@ -43,13 +66,18 @@ export function exportCSS(){
   const P = state.project, cls = classNames(P.nodes), km = kidsMap();
   const out = [`*,*::before,*::after{box-sizing:border-box}`, `body{margin:0;background:${P.page.bg}}`,
     `.page{position:relative;width:100%;max-width:${state.device}px;height:${num(P.page.height)}px;margin:0 auto;background:${P.page.bg};overflow:hidden}`];
+  const frames = [];
   (function w(pid){
     for(const n of km[pid]||[]){
-      out.push(`/* ${n.props.name.replace(/\*\//g, "")} */\n.${cls[n.id]}{${rules(n).join(";")}}`);
+      const an = animations(n, cls[n.id]), r = rules(n);
+      if(an.decl) r.push(an.decl);
+      frames.push(...an.blocks);
+      out.push(`/* ${n.props.name.replace(/\*\//g, "")} */\n.${cls[n.id]}{${r.join(";")}}`);
       if(TYPES[n.type].image) out.push(`.${cls[n.id]} img{display:block;width:100%;height:100%;object-fit:${n.props.fit};border-radius:inherit}`);
       w(n.id);
     }
   })("_");
+  if(frames.length) out.push(...frames, `@media (prefers-reduced-motion:reduce){.page *{animation:none!important}}`);
   return out.join("\n");
 }
 
