@@ -8,10 +8,13 @@ import { borderEffects } from "./border.js";
 import { errorEffects } from "./error.js";
 import { glitchEffects } from "./glitch.js";
 import { destroyEffects } from "./destroy.js";
+import { cosmicEffects } from "./cosmic.js";
+import { divineEffects } from "./divine.js";
+import { systemEffects } from "./system.js";
 
 export function extraEffects(){
   const out = [];
   const def = (cat, id, name, o, make) => out.push({id, name, cat, ...o, make});
-  for(const add of [particleEffects, lightEffects, holoEffects, energyEffects, weatherEffects, borderEffects, errorEffects, glitchEffects, destroyEffects]) add(def);
+  for(const add of [particleEffects, lightEffects, holoEffects, energyEffects, weatherEffects, borderEffects, errorEffects, glitchEffects, destroyEffects, cosmicEffects, divineEffects, systemEffects]) add(def);
   return out;
 }

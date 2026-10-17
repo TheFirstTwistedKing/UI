@@ -9,7 +9,7 @@ import { clamp, f2, hexA, rng, STEP, flicker, windows, NOISE } from "./vfx-util.
 import { extraEffects } from "./vfx-lib/index.js";
 export { hexA };
 
-export const VFX_CATEGORIES = ["빛", "홀로그램", "파티클", "에너지", "날씨·자연", "테두리", "오류", "글리치", "파괴"];
+export const VFX_CATEGORIES = ["빛", "홀로그램", "파티클", "에너지", "날씨·자연", "테두리", "오류", "글리치", "파괴", "우주·천체", "신성", "시스템·버추얼"];
 
 /* 효과 정의
    d: 기본 설정, clip: 요소 밖으로 나가지 않게 자름, poster: 편집 화면에서 보여 줄 순간(지속 시간 대비 비율, null이면 숨김),

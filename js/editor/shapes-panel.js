@@ -43,5 +43,5 @@ export function initShapes(){
     hint:"누르면 새 장식을 넣습니다. 색·선 두께·모양은 오른쪽 속성에서 바꿀 수 있습니다.",
     thumb:o => { const k = Math.min(36 / o.size[0], 36 / o.size[1]);
       return `<svg viewBox="0 0 ${o.vb[0]} ${o.vb[1]}" preserveAspectRatio="none" aria-hidden="true" style="width:${Math.round(o.size[0] * k)}px;height:${Math.max(4, Math.round(o.size[1] * k))}px${o.clip ? ";overflow:hidden" : ""}">${o.svg}</svg>`; },
-    props:o => ({deco:o.id, w:o.size[0], h:o.size[1]})});
+    props:o => ({deco:o.id, w:o.size[0], h:o.size[1], ...(o.color ? {fill:o.color} : {})})});
 }
