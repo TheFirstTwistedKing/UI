@@ -1,6 +1,7 @@
 /* 프로젝트 → 독립 실행 HTML/CSS. 요소는 페이지 컨테이너 안에 절대 위치로 배치하고, 단위(px/%)는 편집기와 같게 유지한다. */
-import { TYPES, state, rgba, kidsMap } from "../core/state.js";
+import { TYPES, state, geo, rgba, kidsMap } from "../core/state.js";
 import { build } from "../fx/presets.js";
+import { buildFx, containerCSS } from "../fx/vfx.js";
 
 const escH = s => String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const num = v => String(+(+v).toFixed(3));
@@ -17,14 +18,37 @@ function keyframesCSS(name, kfs){
 }
 function animations(n, cls){
   const list = n.props.anims || [];
-  if(!list.length || !n.props.visible) return {decl:null, blocks:[]};
+  if(!list.length || !n.props.visible) return {parts:[], blocks:[]};
   const blocks = [], parts = [];
   list.forEach((a, i) => {
     const {keyframes, timing:t} = build(n.props, a), name = `${cls}-a${i+1}`;
     blocks.push(keyframesCSS(name, keyframes));
-    parts.push(`${name} ${num(t.duration)}ms ${t.easing} ${num(t.delay)}ms ${isFinite(t.iterations) ? t.iterations : "infinite"} ${t.direction} ${t.fill}`);
+    parts.push(animDecl(name, t));
   });
-  return {decl:`animation:${parts.join(",")}`, blocks};
+  return {parts, blocks};
+}
+
+const animDecl = (name, t) => `${name} ${num(t.duration)}ms ${t.easing} ${num(t.delay)}ms ${isFinite(t.iterations) ? t.iterations : "infinite"} ${t.direction} ${t.fill}`;
+/* VFX: 요소 안 컨테이너(.cls-v1)와 레이어(.cls-v1-1 …)의 규칙, 요소 자체 애니메이션(self).
+   같은 키프레임은 한 번만 내보낸다. box는 편집기에서 계산한 요소 크기 (파편 개수 등 배치에만 쓰인다). */
+function effects(n, cls, box){
+  const list = n.props.visible ? n.props.fx || [] : [], rules = [], blocks = [], self = [], html = [];
+  list.forEach((f, i) => {
+    const b = buildFx(n.props, f, box), c = `${cls}-v${i+1}`, seen = new Map();
+    rules.push(`.${c}{${containerCSS(n.props, b.clip)}}`, `.${c}>i{position:absolute;display:block}`);
+    b.layers.forEach((l, j) => {
+      let decl = l.css;
+      if(l.keyframes){
+        const key = JSON.stringify(l.keyframes);
+        if(!seen.has(key)){ seen.set(key, `${c}-k${seen.size + 1}`); blocks.push(keyframesCSS(seen.get(key), l.keyframes)); }
+        decl += ";animation:" + animDecl(seen.get(key), l.timing);
+      }
+      rules.push(`.${c}-${j+1}{${decl}}`);
+    });
+    if(b.self){ blocks.push(keyframesCSS(`${c}-s`, b.self.keyframes)); self.push(animDecl(`${c}-s`, b.self.timing)); }
+    html.push(`<div class="${c}" aria-hidden="true">${b.layers.map((_, j) => `<i class="${c}-${j+1}"></i>`).join("")}</div>`);
+  });
+  return {rules, blocks, self, html:html.join("")};
 }
 
 // 이름에서 CSS 클래스 이름을 만든다. 영문이 없으면 유형+번호를 쓴다.
@@ -62,6 +86,8 @@ function rules(n){
   return r;
 }
 
+// 요소 크기: 편집기가 계산해 둔 값을 쓰고, 없으면 px 값 또는 기본값
+const boxOf = n => (geo.L && geo.L[n.id]) || {w:n.props.wu === "px" ? n.props.w : 100, h:n.props.hu === "px" ? n.props.h : 100};
 export function exportCSS(){
   const P = state.project, cls = classNames(P.nodes), km = kidsMap();
   const out = [`*,*::before,*::after{box-sizing:border-box}`, `body{margin:0;background:${P.page.bg}}`,
@@ -69,10 +95,11 @@ export function exportCSS(){
   const frames = [];
   (function w(pid){
     for(const n of km[pid]||[]){
-      const an = animations(n, cls[n.id]), r = rules(n);
-      if(an.decl) r.push(an.decl);
-      frames.push(...an.blocks);
-      out.push(`/* ${n.props.name.replace(/\*\//g, "")} */\n.${cls[n.id]}{${r.join(";")}}`);
+      const an = animations(n, cls[n.id]), fx = effects(n, cls[n.id], boxOf(n)), r = rules(n);
+      const parts = [...an.parts, ...fx.self];
+      if(parts.length) r.push(`animation:${parts.join(",")}`);
+      frames.push(...an.blocks, ...fx.blocks);
+      out.push(`/* ${n.props.name.replace(/\*\//g, "")} */\n.${cls[n.id]}{${r.join(";")}}`, ...fx.rules);
       if(TYPES[n.type].image) out.push(`.${cls[n.id]} img{display:block;width:100%;height:100%;object-fit:${n.props.fit};border-radius:inherit}`);
       w(n.id);
     }
@@ -88,12 +115,13 @@ export function exportHTML(){
     for(const n of km[pid]||[]){
       const p = n.props, t = TYPES[n.type];
       const inner = t.text ? escH(p.text) : t.image && p.src ? `<img src="${escH(p.src)}" alt="">` : "";
-      const kids = km[n.id];
+      const kids = km[n.id], fx = effects(n, cls[n.id], boxOf(n)).html;
       if(kids && kids.length){
         lines.push(`${pad}<div class="${cls[n.id]}">${inner}`);
         w(n.id, depth+1);
+        if(fx) lines.push(`${pad}  ${fx}`);
         lines.push(`${pad}</div>`);
-      } else lines.push(`${pad}<div class="${cls[n.id]}">${inner}</div>`);
+      } else lines.push(`${pad}<div class="${cls[n.id]}">${inner}${fx}</div>`);
     }
   })("_", 2);
   return lines.join("\n");

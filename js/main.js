@@ -18,7 +18,7 @@ let ui = {view:"layers", timeline:true};
 try{ Object.assign(ui, JSON.parse(localStorage.getItem(UI_KEY)) || {}); }catch(e){}
 const saveUI = () => { try{ localStorage.setItem(UI_KEY, JSON.stringify(ui)); }catch(e){} };
 function showView(v){
-  if(ui.view === "motion" && v !== "motion") view.leaveMotion();
+  if(v !== ui.view) view.leaveMotion();
   ui.view = v;
   document.querySelectorAll(".rail [data-view]").forEach(b => b.setAttribute("aria-selected", b.dataset.view === v));
   document.querySelectorAll(".lpanel .view").forEach(s => s.hidden = s.dataset.view !== v);

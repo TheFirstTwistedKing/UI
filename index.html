@@ -63,7 +63,7 @@
     <div class="tl-body" id="tlTrack">
       <div class="tl-rulerrow"><div class="tl-corner"></div><div class="ruler" id="ruler"></div></div>
       <div class="tl-rows" id="tlRows"></div>
-      <div class="tl-empty" id="tlEmpty">애니메이션 탭에서 효과를 골라 요소에 적용하면 여기에 트랙이 생깁니다.</div>
+      <div class="tl-empty" id="tlEmpty">애니메이션이나 VFX 탭에서 효과를 골라 요소에 적용하면 여기에 트랙이 생깁니다.</div>
       <div class="tl-headwrap"><div class="playhead" id="playhead" hidden></div></div>
     </div>
   </section>
@@ -102,8 +102,9 @@
         <div class="lib-foot"><p id="libHint"></p><button class="btn primary" id="libApply" type="button" disabled>선택한 요소에 적용</button></div>
       </section>
       <section class="view" data-view="fx" hidden>
-        <div class="ph">VFX</div>
-        <div class="empty-state"><b>오류, 글리치, 파괴</b>를 포함한 시각 효과를 미리 보고 적용합니다.<span>Phase 5 VFX 엔진에서 추가</span></div>
+        <div class="ph">VFX <small id="fxCount"></small></div>
+        <div class="lib" id="fxLib"></div>
+        <div class="lib-foot"><p id="fxHint"></p><button class="btn primary" id="fxApply" type="button" disabled>선택한 요소에 적용</button></div>
       </section>
     </div>
   </aside>

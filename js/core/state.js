@@ -28,7 +28,7 @@ export function makeProps(type){
     fill:"#1c1c1f", fillAlpha:1, radius:0,
     borderWidth:0, borderStyle:"solid", borderColor:"#e9d8a6",
     shadowOn:false, shadowX:0, shadowY:8, shadowBlur:24, shadowSpread:0, shadowColor:"#000000", shadowAlpha:0.5,
-    clip:false, anims:[]};
+    clip:false, anims:[], fx:[]};
   if(type === "ellipse") Object.assign(p, {w:160, h:160});
   if(type === "group") Object.assign(p, {w:400, h:280, fillAlpha:0});
   if(t.text) Object.assign(p, {w:320, h:60, fillAlpha:0, text:"텍스트", color:"#ffffff", font:FONTS[0], fontSize:24, fontWeight:500,
