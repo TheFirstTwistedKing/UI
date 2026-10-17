@@ -227,6 +227,10 @@ button,input,select,textarea{font:inherit;color:inherit}
 
 /* 애니메이션 라이브러리 */
 .lib{flex:1;overflow:auto;padding:0 8px 8px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:4px;align-content:start}
+.lib-search{padding:0 10px 8px}
+.lib-search input{width:100%;background:var(--panel-2);border:1px solid var(--line);border-radius:var(--r1);padding:5px 8px;font-size:var(--t-sm);color:var(--fg)}
+.lib-search input:focus{outline:none;border-color:var(--accent)}
+.lib [hidden]{display:none}
 .lib-cat{grid-column:1/-1;padding:10px 6px 4px;font-size:var(--t-xs);color:var(--faint);letter-spacing:.08em}
 .lib-item{display:flex;flex-direction:column;align-items:center;gap:6px;padding:10px 4px 8px;background:var(--panel-2);border:1px solid var(--line);border-radius:var(--r2);cursor:pointer;font-size:var(--t-xs);color:var(--muted);
   transition:border-color var(--dur) var(--ease),color var(--dur) var(--ease),background var(--dur) var(--ease)}

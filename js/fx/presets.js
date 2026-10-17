@@ -7,7 +7,9 @@ const EASE = { out:"cubic-bezier(.16,1,.3,1)", back:"cubic-bezier(.34,1.56,.64,1
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const hexA = (hex, a) => { const h = hex.replace("#",""); const [r,g,b] = [0,2,4].map(i => parseInt(h.substr(i,2),16) || 0); return `rgba(${r},${g},${b},${a})`; };
 
-export const CATEGORIES = ["등장", "퇴장", "이동", "회전", "크기", "변형", "페이드", "글로우", "진동", "파동", "궤도", "디지털 전환", "홀로그램", "글리치"];
+import { extraPresets } from "./anim-library.js";
+
+export const CATEGORIES = ["등장", "퇴장", "강조", "이동", "회전", "크기", "변형", "페이드", "글로우", "색·필터", "진동", "파동", "궤도", "디지털 전환", "홀로그램", "글리치"];
 
 export const PRESETS = [
   {id:"fadeIn", name:"페이드 인", cat:"등장", d:{duration:600, easing:"ease-out", iterations:1, fill:"both"},
@@ -67,6 +69,7 @@ export const PRESETS = [
       [.62,3,0,"inset(30% 0% 45% 0%)",20],[.68,-4,1,"inset(70% 0% 5% 0%)",-20],[.74,0,0,"inset(0% 0% 0% 0%)",0],[1,0,0,"inset(0% 0% 0% 0%)",0]]
       .map(([o,x,y,clip,h]) => ({offset:o, easing:"steps(1, end)", transform:c.T(`translate(${x*I}px, ${y*I}px)`), clipPath:clip, filter:`hue-rotate(${h*I}deg)`}))}
 ];
+PRESETS.push(...extraPresets(EASE, clamp, hexA));
 export const PRESET = Object.fromEntries(PRESETS.map(p => [p.id, p]));
 
 export function newAnim(id){

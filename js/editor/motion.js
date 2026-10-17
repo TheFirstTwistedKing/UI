@@ -11,7 +11,7 @@ function library(cfg){
   let h = "";
   for(const cat of cfg.cats){
     const items = cfg.items.filter(p => p.cat === cat); if(!items.length) continue;
-    h += `<div class="lib-cat">${cat} <small>${items.length}</small></div>`;
+    h += `<div class="lib-cat" data-cat="${cat}">${cat} <small>${items.length}</small></div>`;
     h += items.map(p => `<button type="button" class="lib-item${cfg.cls ? " " + cfg.cls : ""}" data-item="${p.id}" aria-pressed="false"><span class="sw"><i></i></span><span class="nm">${esc(p.name)}</span></button>`).join("");
   }
   lib.innerHTML = h;
@@ -43,15 +43,24 @@ function library(cfg){
   lib.addEventListener("click", e => { const b = e.target.closest(".lib-item"); if(b) setActive(b.dataset.item === active ? null : b.dataset.item); });
   lib.addEventListener("dblclick", e => { const b = e.target.closest(".lib-item"); if(b){ setActive(b.dataset.item); apply(); } });
   $(cfg.ids.apply).onclick = apply;
+  // 검색: 이름이나 분류에 검색어가 들어간 항목만 남기고, 항목이 없는 분류 제목은 숨긴다
+  $(cfg.ids.search).addEventListener("input", e => {
+    const q = e.target.value.trim().toLowerCase(), seen = {};
+    lib.querySelectorAll(".lib-item").forEach(b => {
+      const it = byId[b.dataset.item], hit = !q || it.name.toLowerCase().includes(q) || it.cat.toLowerCase().includes(q) || it.id.toLowerCase().includes(q);
+      b.hidden = !hit; if(hit) seen[it.cat] = 1;
+    });
+    lib.querySelectorAll(".lib-cat").forEach(h => h.hidden = !seen[h.dataset.cat]);
+  });
   updateFoot();
   return {updateFoot, leave(){ if(active) setActive(null); }};
 }
 
 export function initMotion(){
   const libs = [
-    library({ids:{lib:"animLib", count:"animCount", hint:"libHint", apply:"libApply"}, items:PRESETS, cats:CATEGORIES,
+    library({ids:{lib:"animLib", count:"animCount", hint:"libHint", apply:"libApply", search:"animSearch"}, items:PRESETS, cats:CATEGORIES,
       preview:setPreview, swatch, add:(p, id) => (p.anims ||= []).push(newAnim(id))}),
-    library({ids:{lib:"fxLib", count:"fxCount", hint:"fxHint", apply:"fxApply"}, items:EFFECTS, cats:VFX_CATEGORIES, cls:"fx",
+    library({ids:{lib:"fxLib", count:"fxCount", hint:"fxHint", apply:"fxApply", search:"fxSearch"}, items:EFFECTS, cats:VFX_CATEGORIES, cls:"fx",
       preview:setFxPreview, swatch:fxSwatch, add:(p, id) => (p.fx ||= []).push(newFx(id))})
   ];
   const prevHint = view.hint;
