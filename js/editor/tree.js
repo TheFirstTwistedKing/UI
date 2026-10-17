@@ -3,7 +3,7 @@ import { TYPES, state, view, $, esc, get, kidsMap, descendants, isLocked, topSel
 import { icon } from "./icons.js";
 
 // 선택한 요소가 컨테이너면 그 안에, 아니면 같은 부모에 삽입한다
-function insertParent(){
+export function insertParent(){
   const n = get(state.sel);
   if(!n) return null;
   return TYPES[n.type].container ? n.id : n.parent;

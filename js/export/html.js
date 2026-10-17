@@ -3,6 +3,7 @@ import { TYPES, state, geo, rgba, kidsMap } from "../core/state.js";
 import { build } from "../fx/presets.js";
 import { buildFx, containerCSS } from "../fx/vfx.js";
 import { ANGLE, ANGLE_RULE } from "../fx/vfx-util.js";
+import { shapeOf, shapeFill, shapeShadow } from "../shapes/shapes.js";
 
 const escH = s => String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const num = v => String(+(+v).toFixed(3));
@@ -68,11 +69,13 @@ function classNames(nodes){
 function rules(n){
   const p = n.props, t = TYPES[n.type], r = [];
   r.push("position:absolute", `left:${num(p.x)}${p.xu}`, `top:${num(p.y)}${p.yu}`, `width:${num(p.w)}${p.wu}`, `height:${num(p.h)}${p.hu}`);
-  if(p.fillAlpha > 0) r.push(`background:${p.fillAlpha >= 1 ? p.fill : rgba(p.fill, p.fillAlpha)}`);
-  if(n.type === "ellipse") r.push("border-radius:50%");
-  else if(p.radius > 0) r.push(`border-radius:${num(p.radius)}px`);
-  if(p.borderWidth > 0) r.push(`border:${num(p.borderWidth)}px ${p.borderStyle} ${p.borderColor}`);
-  if(p.shadowOn) r.push(`box-shadow:${num(p.shadowX)}px ${num(p.shadowY)}px ${num(p.shadowBlur)}px ${num(p.shadowSpread)}px ${rgba(p.shadowColor, p.shadowAlpha)}`);
+  if(!t.shape){ // 도형은 SVG가 채우기·선·그림자를 맡는다 (shapeRules)
+    if(p.fillAlpha > 0) r.push(`background:${p.fillAlpha >= 1 ? p.fill : rgba(p.fill, p.fillAlpha)}`);
+    if(n.type === "ellipse") r.push("border-radius:50%");
+    else if(p.radius > 0) r.push(`border-radius:${num(p.radius)}px`);
+    if(p.borderWidth > 0) r.push(`border:${num(p.borderWidth)}px ${p.borderStyle} ${p.borderColor}`);
+    if(p.shadowOn) r.push(`box-shadow:${num(p.shadowX)}px ${num(p.shadowY)}px ${num(p.shadowBlur)}px ${num(p.shadowSpread)}px ${rgba(p.shadowColor, p.shadowAlpha)}`);
+  }
   if(p.opacity < 1) r.push(`opacity:${num(p.opacity)}`);
   if(p.rotation) r.push(`transform:rotate(${num(p.rotation)}deg)`);
   if(p.clip) r.push("overflow:hidden");
@@ -86,6 +89,22 @@ function rules(n){
   else if(t.text) r.push("display:flex");
   return r;
 }
+
+// 도형: SVG를 상자에 꽉 채우고 path에 채우기·선을 준다
+function shapeRules(n, cls){
+  const p = n.props, f = shapeShadow(p), r = [`.${cls}>svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible${f ? `;filter:${f}` : ""}}`];
+  const path = [`fill:${shapeFill(p)}`];
+  if(p.borderWidth > 0){
+    const w = num(p.borderWidth);
+    path.push(`stroke:${p.borderColor}`, `stroke-width:${w}px`, "stroke-linejoin:round", "vector-effect:non-scaling-stroke");
+    if(p.borderStyle === "dashed") path.push(`stroke-dasharray:${w * 3}px ${w * 2}px`);
+    if(p.borderStyle === "dotted") path.push(`stroke-dasharray:0 ${w * 2}px`, "stroke-linecap:round");
+  }
+  if(shapeOf(p.shape).evenodd) path.push("fill-rule:evenodd");
+  r.push(`.${cls}>svg path{${path.join(";")}}`);
+  return r;
+}
+const shapeHTML = p => `<svg viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"><path d="${shapeOf(p.shape).d}"/></svg>`;
 
 // 요소 크기: 편집기가 계산해 둔 값을 쓰고, 없으면 px 값 또는 기본값
 const boxOf = n => (geo.L && geo.L[n.id]) || {w:n.props.wu === "px" ? n.props.w : 100, h:n.props.hu === "px" ? n.props.h : 100};
@@ -101,6 +120,7 @@ export function exportCSS(){
       if(parts.length) r.push(`animation:${parts.join(",")}`);
       frames.push(...an.blocks, ...fx.blocks);
       out.push(`/* ${n.props.name.replace(/\*\//g, "")} */\n.${cls[n.id]}{${r.join(";")}}`, ...fx.rules);
+      if(TYPES[n.type].shape) out.push(...shapeRules(n, cls[n.id]));
       if(TYPES[n.type].image) out.push(`.${cls[n.id]} img{display:block;width:100%;height:100%;object-fit:${n.props.fit};border-radius:inherit}`);
       w(n.id);
     }
@@ -116,7 +136,7 @@ export function exportHTML(){
     const pad = "  ".repeat(depth);
     for(const n of km[pid]||[]){
       const p = n.props, t = TYPES[n.type];
-      const inner = t.text ? escH(p.text) : t.image && p.src ? `<img src="${escH(p.src)}" alt="">` : "";
+      const inner = t.text ? escH(p.text) : t.image && p.src ? `<img src="${escH(p.src)}" alt="">` : t.shape ? shapeHTML(p) : "";
       const kids = km[n.id], fx = effects(n, cls[n.id], boxOf(n)).html;
       if(kids && kids.length){
         lines.push(`${pad}<div class="${cls[n.id]}">${inner}`);

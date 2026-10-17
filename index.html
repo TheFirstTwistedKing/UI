@@ -70,6 +70,7 @@
   <aside class="left">
     <nav class="rail" role="tablist" aria-label="왼쪽 패널">
       <button type="button" role="tab" data-view="layers" data-icon="layers" title="레이어" aria-label="레이어"></button>
+      <button type="button" role="tab" data-view="shape" data-icon="shape" title="도형" aria-label="도형"></button>
       <button type="button" role="tab" data-view="component" data-icon="component" title="UI 구성 요소" aria-label="UI 구성 요소"></button>
       <button type="button" role="tab" data-view="ornament" data-icon="ornament" title="장식" aria-label="장식"></button>
       <button type="button" role="tab" data-view="motion" data-icon="motion" title="애니메이션" aria-label="애니메이션"></button>
@@ -87,6 +88,12 @@
           <button class="btn danger" id="delBtn" type="button" title="Delete">삭제</button>
           <button class="btn" id="multiTap" type="button" title="켜면 누르는 요소가 선택에 추가됩니다 (휴대폰용)" aria-pressed="false">다중</button>
         </div>
+      </section>
+      <section class="view" data-view="shape" hidden>
+        <div class="ph">도형 <small id="shapeCount"></small></div>
+        <div class="lib-search"><input type="search" id="shapeSearch" placeholder="이름·분류로 찾기" aria-label="도형 찾기"></div>
+        <div class="lib shapes" id="shapeLib"></div>
+        <div class="lib-foot"><p id="shapeHint"></p></div>
       </section>
       <section class="view" data-view="component" hidden>
         <div class="ph">UI 구성 요소</div>
