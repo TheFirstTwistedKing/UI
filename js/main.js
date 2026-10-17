@@ -8,6 +8,7 @@ import { initToolbar, closeModals, modalOpen } from "./editor/toolbar.js";
 import { mountIcons } from "./editor/icons.js";
 import { initTimeline } from "./editor/timeline.js";
 import { initMotion } from "./editor/motion.js";
+import { initShapes } from "./editor/shapes-panel.js";
 import { attach, bindElements, toggle as togglePlay, stop as stopPlay } from "./fx/engine.js";
 import { elementFor } from "./editor/canvas.js";
 import { view } from "./core/state.js";
@@ -71,5 +72,5 @@ if(prefs){
 state.project = validProject(store.current()) || blankProject();
 bindElements(elementFor); view.anim = attach;
 view.showView = v => { showView(v); saveUI(); };
-initShell(); initToolbar(); initCanvas(); initTree(); initProps(); initTimeline(); initMotion();
+initShell(); initToolbar(); initCanvas(); initTree(); initProps(); initTimeline(); initMotion(); initShapes();
 renderAll();
