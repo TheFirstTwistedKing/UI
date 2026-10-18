@@ -124,7 +124,7 @@ function paint(d, n, pr){
   }
   if(t.image){
     if(p.src){ const im = document.createElement("img"); im.className = "img"; im.alt = ""; im.draggable = false; im.src = p.src; im.style.objectFit = p.fit; d.prepend(im); }
-    else { const ph = document.createElement("div"); ph.className = "imgph"; ph.textContent = "이미지"; ph.style.fontSize = Math.max(10, 11/geo.scale) + "px"; d.prepend(ph); }
+    else { const ph = document.createElement("div"); ph.className = "imgph"; ph.textContent = "이미지 · 파일을 끌어 놓기"; ph.style.fontSize = Math.max(10, 11/geo.scale) + "px"; d.prepend(ph); }
   }
 }
 

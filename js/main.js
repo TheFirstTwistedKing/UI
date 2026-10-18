@@ -3,6 +3,7 @@ import { DEVICES, state, geo, store, validProject, blankProject, renderAll, sele
 import { initCanvas, nudge, zoomTo } from "./editor/canvas.js";
 import { group, ungroup, copy, cut, paste } from "./editor/edit.js";
 import { initTree, showTree, duplicate, removeSel } from "./editor/tree.js";
+import { initImages, pasteImages } from "./editor/images.js";
 import { initProps } from "./editor/props.js";
 import { initToolbar, closeModals, modalOpen } from "./editor/toolbar.js";
 import { mountIcons } from "./editor/icons.js";
@@ -85,6 +86,13 @@ function initShell(){
   // 타임라인 높이가 바뀌면 아트보드 맞춤 배율도 다시 계산된다 (canvas의 ResizeObserver)
 }
 
+let pasteT = 0;
+window.addEventListener("paste", e => {
+  const tg = e.target.tagName;
+  if(tg === "INPUT" || tg === "TEXTAREA" || modalOpen()) return;
+  clearTimeout(pasteT);
+  if(!pasteImages(e)){ e.preventDefault(); paste(); }
+});
 window.addEventListener("keydown", e => {
   if(e.key === "Escape"){ if(!modalOpen()){ view.leaveMotion(); select(null); } closeModals(); return; }
   const tg = e.target.tagName;
@@ -97,7 +105,8 @@ window.addEventListener("keydown", e => {
   if(mod && k === "g"){ e.preventDefault(); e.shiftKey ? ungroup() : group(); return; }
   if(mod && k === "c"){ if(state.sel){ e.preventDefault(); copy(); } return; }
   if(mod && k === "x"){ if(state.sel){ e.preventDefault(); cut(); } return; }
-  if(mod && k === "v"){ e.preventDefault(); paste(); return; }
+  // 붙여넣기는 paste 이벤트에서 처리한다 (클립보드의 이미지를 읽으려면). 이벤트가 오지 않는 브라우저를 위해 잠시 뒤 요소 붙여넣기
+  if(mod && k === "v"){ clearTimeout(pasteT); pasteT = setTimeout(paste, 80); return; }
   if(mod && (k === "=" || k === "+")){ e.preventDefault(); zoomTo(geo.scale * 1.25); return; }
   if(mod && k === "-"){ e.preventDefault(); zoomTo(geo.scale / 1.25); return; }
   if(mod && k === "0"){ e.preventDefault(); state.zoom = "fit"; savePrefs(); renderAll(); return; }
@@ -119,5 +128,5 @@ if(prefs){
 state.project = validProject(store.current()) || blankProject();
 bindElements(elementFor); view.anim = attach; view.preview = refreshPreview;
 view.showView = v => { showView(v); if(ui.lcol) setPane("lcol", false); saveUI(); };
-initShell(); initToolbar(); initCanvas(); initTree(); initProps(); initTimeline(); initMotion(); initShapes(); initComponents(); initFind();
+initShell(); initToolbar(); initCanvas(); initTree(); initImages(); initProps(); initTimeline(); initMotion(); initShapes(); initComponents(); initFind();
 renderAll();

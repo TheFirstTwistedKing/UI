@@ -92,6 +92,7 @@ export function initTree(){
     const siblings = state.project.nodes.filter(n => n.parent === parent).length;
     const x = node(type, parent, {name: uniqueName(TYPES[type].label), x: 40 + siblings*16, y: 40 + siblings*16});
     commit(() => { state.project.nodes.push(x); state.sel = x.id; state.sels = [x.id]; });
+    if(TYPES[type].image) view.pickImage(x.id); // 이미지는 바로 파일을 고른다 (취소하면 자리 표시로 남는다)
   });
   $("tree").addEventListener("click", e => {
     const r = e.target.closest(".node"); if(!r) return;

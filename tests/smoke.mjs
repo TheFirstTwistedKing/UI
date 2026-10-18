@@ -253,6 +253,22 @@ const LIBS = await (async () => {
     check("WebGL VFX: 내보낸 HTML이 편집기와 같은 화면 · 컨텍스트 1개", same && n === 1 && !e2.length, `컨텍스트 ${n}, ${ex.map(s => s.nz).join(", ")} ${e2.join(" | ")}`);
     await ctx2.close();
   }
+  // 이미지 넣기: 끌어 놓기 · 붙여넣기로 원본 비율 그대로 들어가고, 아주 큰 사진은 줄여 저장한다
+  const img = await pg.evaluate(async () => {
+    const S = await import("./js/core/state.js"), before = S.state.project.nodes.length;
+    const file = async (w, h, name) => { const c = document.createElement("canvas"); c.width = w; c.height = h; const g = c.getContext("2d"); for(let i = 0; i < 300; i++){ g.fillStyle = `hsl(${i},70%,50%)`; g.fillRect(i * 37 % w, i * 53 % h, 60, 60); } return new File([await new Promise(r => c.toBlob(r))], name, {type:"image/png"}); };
+    const dt = new DataTransfer(); dt.items.add(await file(3000, 1500, "big.png"));
+    const r = document.getElementById("screen").getBoundingClientRect(), x = r.left + r.width / 2, y = r.top + r.height / 2;
+    document.getElementById("stage").dispatchEvent(new DragEvent("drop", {dataTransfer:dt, clientX:x, clientY:y, bubbles:true, cancelable:true}));
+    await new Promise(res => setTimeout(res, 1200));
+    const a = S.state.project.nodes.at(-1), im = new Image(); im.src = a.props.src; await im.decode();
+    const dt2 = new DataTransfer(); dt2.items.add(await file(200, 100, "p.png"));
+    document.body.dispatchEvent(new ClipboardEvent("paste", {clipboardData:dt2, bubbles:true, cancelable:true}));
+    await new Promise(res => setTimeout(res, 500));
+    const b = S.state.project.nodes.at(-1);
+    return {added:S.state.project.nodes.length - before, drop:[a.props.w / a.props.h, im.naturalWidth], paste:[b.props.w, b.props.h], shown:!!document.querySelector(`#screen [data-id="${b.id}"] img`)};
+  });
+  check("이미지 넣기: 끌어 놓기 · 붙여넣기 · 큰 사진 줄이기", img.added === 2 && img.drop[0] === 2 && img.drop[1] === 2000 && img.paste[0] === 200 && img.paste[1] === 100 && img.shown, JSON.stringify(img));
   check("데스크톱: 스크립트 오류 없음", errs.length === 0, errs.join(" | "));
   await ctx.close();
 }
