@@ -7,7 +7,8 @@
 import { state, geo, view, get } from "../core/state.js";
 import { build, endTime, newAnim } from "./presets.js";
 import { buildFx, fxEnd, fxPoster, newFx, containerCSS } from "./vfx.js";
-import { registerAngle } from "./vfx-util.js";
+import { registerAngle, hexA } from "./vfx-util.js";
+import { glHost, setGlQuality } from "../gl/host.js";
 
 registerAngle(); // 원뿔 그라디언트 회전 각도가 보간되도록
 
@@ -37,10 +38,33 @@ function mountOne(el, props, f, box, extra){
   b.layers.forEach(l => { const d = document.createElement("i"); d.style.cssText = "position:absolute;display:block;" + l.css; l.el = d; c.appendChild(d); });
   c._b = b; c._f = f;
   el.appendChild(c);
+  if(b.gl) mountGl(c, b.gl, f);
   return c;
+}
+/* WebGL 효과: 컨테이너 안에 2D 캔버스를 두고, 공유 렌더러가 그린 결과를 복사한다.
+   WebGL2가 없으면 효과 색의 은은한 빛으로 대신하고 그 사실을 툴팁으로 알린다 (내보낸 HTML과 같은 대체 방식). */
+function mountGl(c, g, f){
+  const host = glHost();
+  if(!host.ok){ c.style.background = `radial-gradient(closest-side,${hexA(f.color, 1/3)},transparent)`; c.title = "이 브라우저는 WebGL2를 지원하지 않아 대체 그림으로 표시합니다"; return; }
+  const cv = document.createElement("canvas");
+  cv.style.cssText = "position:absolute;inset:0;width:100%;height:100%;display:block";
+  c.appendChild(cv);
+  c._gl = host.add(cv, g.def, g.P);
+}
+// 타임라인 시각(ms) → 효과 안의 시간(초)과 한 주기 안의 위치. 효과가 시작 전이거나 끝났으면 null
+function glTime(c, ms){
+  const t = c._b.timing, tl = ms - t.delay;
+  if(tl < 0 || tl > t.duration * t.iterations) return null;
+  return {t:tl / 1000 * (c._gl.P.speedK || 1), phase:(tl % t.duration) / t.duration};
+}
+function glDraw(c, ms){
+  if(!c._gl) return;
+  const r = ms == null ? null : glTime(c, ms);
+  r ? glHost().draw(c._gl, r.t, r.phase) : glHost().clear(c._gl);
 }
 // 효과가 있는 요소마다 컨테이너가 없거나 설정이 바뀌었으면 다시 만든다 (캔버스를 다시 칠하면 컨테이너는 지워진다)
 function mountAll(){
+  if(glHost().ok) glHost().prune();
   for(const n of state.project.nodes){
     const el = elementFor(n.id); if(!el) continue;
     const list = n.props.visible ? n.props.fx || [] : [], r = geo.L[n.id] || {w:100, h:100};
@@ -54,6 +78,7 @@ function mountAll(){
 const play1 = (target, kf, t) => { try{ return target.animate(kf, t); }catch(e){ return null; } };
 function startPoster(c){
   const at = fxPoster(c._f); c._posters = [];
+  glDraw(c, at);
   if(at == null) return;
   for(const l of c._b.layers){ if(!l.keyframes) continue; const a = play1(l.el, l.keyframes, l.timing); if(a){ a.pause(); a.currentTime = at; c._posters.push(a); } }
 }
@@ -79,9 +104,15 @@ export function attach(){
       }
     }
   }
+  if(player.active) fxContainers().forEach(c => glDraw(c, player.t));
   attachPreview(); attachFxPreview();
 }
-function seekAll(){ for(const a of anims) a.currentTime = player.t; view.clock(); }
+// WebGL 품질을 바꾸면 지금 보이는 모습을 새 품질로 다시 그린다
+export function setQuality(q){
+  setGlQuality(q);
+  fxContainers().forEach(c => glDraw(c, player.active ? player.t : fxPoster(c._f)));
+}
+function seekAll(){ for(const a of anims) a.currentTime = player.t; fxContainers().forEach(c => glDraw(c, player.t)); view.clock(); }
 function tick(now){
   const dt = now - last; last = now;
   player.t += dt * player.rate;
@@ -140,9 +171,10 @@ function runLive(el, props, f, box){
   const c = mountOne(el, props, {...f, delay:0}, box, "pv"), b = c._b, list = [];
   if(b.self){ const a = play1(el, b.self.keyframes, b.self.timing); if(a) list.push(a); }
   for(const l of b.layers) if(l.keyframes){ const a = play1(l.el, l.keyframes, l.timing); if(a) list.push(a); }
+  if(c._gl){ const t0 = performance.now(); glHost().live(c._gl, true, now => glTime(c, now - t0)); }
   return {c, list, cycle:isFinite(b.timing.iterations) ? b.timing.duration * b.timing.iterations + 700 : 0};
 }
-const endLive = h => { h.list.forEach(a => a.cancel()); h.c.remove(); };
+const endLive = h => { h.list.forEach(a => a.cancel()); if(h.c._gl){ glHost().live(h.c._gl, false); glHost().drop(h.c._gl); } h.c.remove(); };
 export function setFxPreview(id){ fxPreviewId = id; attachFxPreview(); }
 function attachFxPreview(){
   fxPreview.forEach(endLive); fxPreview = []; clearTimeout(fxPreviewTimer);

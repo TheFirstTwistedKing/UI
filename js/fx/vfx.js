@@ -8,9 +8,10 @@
 import { clamp, f2, hexA, rng, STEP, flicker, windows, NOISE } from "./vfx-util.js";
 import { extraEffects } from "./vfx-lib/index.js";
 import { baseTransform } from "../core/state.js";
-export { hexA };
+import { GL_EFFECTS, GL_PARAMS } from "../gl/effects.js";
+export { hexA, GL_PARAMS };
 
-export const VFX_CATEGORIES = ["빛", "홀로그램", "파티클", "에너지", "날씨·자연", "테두리", "오류", "글리치", "파괴", "우주·천체", "신성", "시스템·버추얼"];
+export const VFX_CATEGORIES = ["WebGL", "빛", "홀로그램", "파티클", "에너지", "날씨·자연", "테두리", "오류", "글리치", "파괴", "우주·천체", "신성", "시스템·버추얼"];
 
 /* 효과 정의
    d: 기본 설정, clip: 요소 밖으로 나가지 않게 자름, poster: 편집 화면에서 보여 줄 순간(지속 시간 대비 비율, null이면 숨김),
@@ -168,14 +169,25 @@ export const EFFECTS = [
       {opacity:c.op, filter:"blur(0px) brightness(1)", transform:c.T("translateY(0px) scale(1)")},
       {opacity:0, filter:`blur(${f2(10*c.I)}px) brightness(${f2(1 + 1.5*c.I)})`, transform:c.T(`translateY(${f2(-24*c.I)}px) scale(${f2(1 + .08*c.I)})`)}]}})}
 ];
+EFFECTS.unshift(...GL_EFFECTS);
 EFFECTS.push(...extraEffects());
 export const EFFECT = Object.fromEntries(EFFECTS.map(e => [e.id, e]));
 
 export function newFx(id){
   const e = EFFECT[id];
-  return Object.assign({effect:id, duration:1500, delay:0, iterations:0, intensity:1, speed:1, density:1, color:"#e9d8a6", seed:Math.floor(Math.random()*1e9)}, e.d);
+  const f = Object.assign({effect:id, duration:1500, delay:0, iterations:0, intensity:1, speed:1, density:1, color:"#e9d8a6", seed:Math.floor(Math.random()*1e9)}, e.d);
+  if(e.gl) f.p = {...e.d.p};
+  return f;
 }
-export const normFx = f => EFFECT[f.effect] ? Object.assign(newFx(f.effect), f) : Object.assign(newFx("neonGlow"), {seed:f.seed || 1});
+// WebGL 효과의 세부 값(p)은 기본값 위에 저장된 값을 덮어 쓴다 (새 값이 생겨도 옛 프로젝트가 열린다)
+export function normFx(f){
+  if(!EFFECT[f.effect]) return Object.assign(newFx("neonGlow"), {seed:f.seed || 1});
+  const o = Object.assign(newFx(f.effect), f), e = EFFECT[f.effect];
+  if(e.gl) o.p = {...e.d.p, ...(f.p || {})};
+  return o;
+}
+// WebGL 렌더러에 넘기는 값: 세부 값 + 색·강도·배치·속도
+export const glParams = f => ({...f.p, color:f.color, color2:f.color2 || f.color, intensity:+f.intensity || 0, seed:f.seed, speedK:f.speed > 0 ? f.speed : 1});
 
 /* 요소 속성(props), 효과 설정(f), 요소 크기(box)로 레이어와 타이밍을 만든다.
    반환: {clip, layers:[{css, keyframes, timing}], self:{keyframes, timing}|null, timing} */
@@ -189,7 +201,7 @@ export function buildFx(props, f, box){
   const out = e.make(c), iters = f.iterations > 0 ? f.iterations : Infinity;
   const timing = {duration:D, delay:Math.max(0, f.delay), iterations:iters};
   return {
-    clip:!!e.clip, timing,
+    clip:!!e.clip, timing, gl:e.gl ? {def:e.gl, P:glParams(f)} : null,
     layers:out.layers.map(l => ({css:l.css, keyframes:l.kf || null,
       timing:{duration:Math.max(1, D * (l.dur || 1)), delay:timing.delay + D * (l.at || 0), iterations:iters, direction:"normal", easing:l.easing || "linear", fill:l.fill || "none"}})),
     self:out.self ? {keyframes:out.self.kf, timing:{duration:D, delay:timing.delay, iterations:iters, direction:"normal", easing:out.self.easing || "linear", fill:out.self.fill || "none"}} : null

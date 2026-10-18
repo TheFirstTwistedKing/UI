@@ -201,7 +201,8 @@ button,input,select,textarea{font:inherit;color:inherit}
 .tl-body{border-top:1px solid var(--line)}
 .timeline.collapsed .tl-body{border-top-color:transparent}
 .tl-time{font-family:var(--f-mono);font-size:var(--t-sm);color:var(--muted);font-variant-numeric:tabular-nums}
-.tl-title{display:inline-flex;align-items:center;gap:6px;font-size:var(--t-xs);letter-spacing:.12em;text-transform:uppercase;color:var(--faint);margin-left:6px}
+.tl-title{display:inline-flex;align-items:center;gap:6px;font-size:var(--t-xs);letter-spacing:.12em;text-transform:uppercase;color:var(--faint);margin-left:6px;white-space:nowrap}
+@media (max-width:480px){.tl-title{display:none}}
 .tl-toggle .ic{transition:transform var(--dur) var(--ease);transform:rotate(180deg)}
 .timeline.collapsed .tl-toggle .ic{transform:none}
 .tl-body{--lab:168px;height:var(--tlh,140px);position:relative;overflow:hidden auto;transition:height .22s var(--ease);user-select:none}

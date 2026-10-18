@@ -4,6 +4,7 @@
 import http from "node:http";
 import fs from "node:fs";
 import path from "node:path";
+import os from "node:os";
 import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
 
@@ -220,6 +221,38 @@ const LIBS = await (async () => {
   const tl1 = await pg.evaluate(() => document.getElementById("tlTrack").offsetHeight);
   const sized = [await w(".left"), await w(".right")];
   check("끌어서 패널 크기 조절", sized[0] >= opened[0] + 70 && sized[1] >= opened[1] + 50 && tl1 >= tl0 + 40, `왼쪽 ${opened[0]}→${sized[0]}, 오른쪽 ${opened[1]}→${sized[1]}, 타임라인 ${tl0}→${tl1}`);
+  // WebGL VFX: 견본 3종이 그려지고, 세부 값을 바꾸면 결과가 바뀌며, 내보낸 HTML의 정지 화면(움직임 줄이기)이 편집기와 같다
+  const glStats = sel => `[...document.querySelectorAll("${sel}")].map(c => { const d = c.getContext("2d").getImageData(0, 0, c.width, c.height).data; let nz = 0; const px = []; for(let j = 3; j < d.length; j += 4){ if(d[j] > 8) nz++; if(j % 388 === 3) px.push(d[j-3], d[j-2], d[j-1], d[j]); } return {nz, px}; })`;
+  const glSetup = await pg.evaluate(async () => {
+    const S = await import("./js/core/state.js"), V = await import("./js/fx/vfx.js"), G = await import("./js/gl/host.js");
+    const ns = ["glCore", "glFountain", "glPortal"].map((id, i) => { const n = S.node("rect", null, {name:"GL" + i, x:60 + i * 300, y:60, w:240, h:240, fillAlpha:0}); const f = V.newFx(id); f.seed = 5 + i; n.props.fx.push(f); return n; });
+    S.commit(() => { S.state.project.nodes = ns; S.state.sel = null; S.state.sels = []; });
+    await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+    return G.glHost().ok;
+  });
+  const glA = await pg.evaluate(glStats("#screen .vfx canvas"));
+  check("WebGL VFX: 견본 3종이 편집기에 그려짐", glSetup && glA.length === 3 && glA.every(s => s.nz > 500), glA.map(s => s.nz).join(", "));
+  const glHtml = await pg.evaluate(async () => (await import("./js/export/html.js")).exportDocument());
+  const glB = await pg.evaluate(async () => {
+    const S = await import("./js/core/state.js");
+    S.commit(() => { S.state.project.nodes[0].props.fx[0].p = {...S.state.project.nodes[0].props.fx[0].p, rings:0, rays:0}; });
+    await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+    return null;
+  }).then(() => pg.evaluate(glStats("#screen .vfx canvas")));
+  const changed = glA[0].px.reduce((s, v, i) => s + Math.abs(v - glB[0].px[i]), 0);
+  check("WebGL VFX: 세부 값을 바꾸면 결과가 바뀜", changed > 1000, `차이 ${changed}`);
+  {
+    const ctx2 = await browser.newContext({viewport:{width:1440, height:900}, reducedMotion:"reduce"}), p2 = await ctx2.newPage(), e2 = [];
+    p2.on("pageerror", e => e2.push(e.message));
+    await p2.addInitScript(() => { window.__glc = 0; const g = HTMLCanvasElement.prototype.getContext; HTMLCanvasElement.prototype.getContext = function(t, o){ if(/webgl/.test(t)) window.__glc++; return g.call(this, t, o); }; });
+    // addInitScript는 setContent에 적용되지 않으므로 임시 파일로 연다
+    const tmp = path.join(fs.mkdtempSync(path.join(os.tmpdir(), "uiforge-")), "gl.html"); fs.writeFileSync(tmp, glHtml);
+    await p2.goto("file://" + tmp); await p2.waitForTimeout(200);
+    const ex = await p2.evaluate(glStats("canvas")), n = await p2.evaluate(() => window.__glc);
+    const same = ex.length === 3 && ex.every((s, i) => s.px.every((v, j) => v === glA[i].px[j]));
+    check("WebGL VFX: 내보낸 HTML이 편집기와 같은 화면 · 컨텍스트 1개", same && n === 1 && !e2.length, `컨텍스트 ${n}, ${ex.map(s => s.nz).join(", ")} ${e2.join(" | ")}`);
+    await ctx2.close();
+  }
   check("데스크톱: 스크립트 오류 없음", errs.length === 0, errs.join(" | "));
   await ctx.close();
 }
