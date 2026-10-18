@@ -2,7 +2,8 @@
 import { state, view, $, esc, get, select } from "../core/state.js";
 import { PRESET, endTime, normAnim } from "../fx/presets.js";
 import { EFFECT, fxEnd, normFx } from "../fx/vfx.js";
-import { player, range, toggle, stop, seek, setRate } from "../fx/engine.js";
+import { player, range, toggle, stop, seek, setRate, setQuality } from "../fx/engine.js";
+import { glQuality } from "../gl/host.js";
 import { icon } from "./icons.js";
 
 const fmt = ms => { const s = ms / 1000, m = Math.floor(s / 60); return `${String(m).padStart(2,"0")}:${(s - m*60).toFixed(2).padStart(5,"0")}`; };
@@ -65,6 +66,8 @@ export function initTimeline(){
   $("tlStop").onclick = stop;
   $("tlRate").onchange = e => setRate(+e.target.value);
   $("tlLoop").onchange = e => { player.loop = e.target.checked; };
+  $("tlGlq").value = glQuality();
+  $("tlGlq").onchange = e => setQuality(e.target.value);
   // 눈금이나 트랙 빈 곳을 누르고 끌면 재생 위치를 옮긴다. 막대를 누르면 그 요소를 선택한다.
   $("tlTrack").addEventListener("pointerdown", e => {
     const bar = e.target.closest(".tl-bar"), label = e.target.closest(".tl-label");

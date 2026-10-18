@@ -1,7 +1,7 @@
 /* 상단 툴바 · 하단 상태 표시줄 · 저장/불러오기/내보내기 모달 */
 import { state, geo, view, store, history, $, esc, r3, get, undo, redo, commit, openProject, blankProject, sampleProject, validProject, savePrefs, toast } from "../core/state.js";
 import { renderCanvas } from "./canvas.js";
-import { exportDocument, exportCSS } from "../export/html.js";
+import { exportDocument, exportCSS, glConfig } from "../export/html.js";
 
 function renderToolbar(){
   $("projName").value = state.project.name;
@@ -45,7 +45,10 @@ const EXPORT_NOTES = {
 const exportText = () => exportTab === "html" ? exportDocument() : exportTab === "css" ? exportCSS() : JSON.stringify({format:"uiforge-web", version:1, project:state.project}, null, 2);
 function showExport(){
   document.querySelectorAll("#codeModal [data-tab]").forEach(b => b.setAttribute("aria-selected", b.dataset.tab === exportTab));
-  $("codeNote").textContent = EXPORT_NOTES[exportTab];
+  const gl = exportTab !== "json" && glConfig();
+  $("codeNote").textContent = EXPORT_NOTES[exportTab] + (!gl ? "" : exportTab === "html"
+    ? " WebGL 효과는 함께 들어간 실행 코드가 WebGL2로 그리고, WebGL2가 없는 브라우저에서는 효과 색의 은은한 빛으로 대신 보입니다."
+    : " WebGL 효과는 HTML 탭의 실행 코드가 있어야 그려집니다.");
   $("codeOut").textContent = exportText();
 }
 function download(text, name, type){

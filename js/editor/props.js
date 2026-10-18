@@ -7,7 +7,8 @@ import { group, ungroup, align, distribute } from "./edit.js";
 import { icon } from "./icons.js";
 import { PRESETS, PRESET, EASINGS, newAnim, normAnim, endTime, DEFAULT_KEYS } from "../fx/presets.js";
 import { parseColor, fmtColor } from "../core/color.js";
-import { EFFECTS, EFFECT, newFx, normFx } from "../fx/vfx.js";
+import { EFFECTS, EFFECT, newFx, normFx, GL_PARAMS } from "../fx/vfx.js";
+import { glHost } from "../gl/host.js";
 import { STYLE_KITS, kitAllowed } from "../core/styles.js";
 import { MODES, TRIGGERS, TRIGGER, ACTIONS, ACTION, newAction, modeSupport } from "../core/interact.js";
 
@@ -64,9 +65,19 @@ function fxCard(raw, i){
     ${row("강도", sld("intensity", f.intensity, 0, 3, 0.05))}
     ${row("속도", sld("speed", f.speed, 0.1, 5, 0.05))}
     ${e.density ? row("밀도", sld("density", f.density, 0, 4, 0.05)) : ""}
-    ${e.color ? row(e.cat === "파괴" ? "색 (채우기 없을 때)" : "색", `<input type="color" id="${id("color")}-c" data-prop="color" data-kind="color" ${A} value="${f.color}"><input type="text" id="${id("color")}" data-prop="color" data-kind="color" ${A} value="${f.color}" spellcheck="false">`) : ""}
-    ${e.density || e.cat === "글리치" || e.cat === "파괴" || e.id === "staticNoise" ? row("배치", `<button class="btn" type="button" data-cmd="reseed" data-fx="${i}">무작위 다시 배치</button>`) : ""}
+    ${e.color ? row(e.cat === "파괴" ? "색 (채우기 없을 때)" : e.color2 ? "색 (시작)" : "색", colorPair("color", f.color)) : ""}
+    ${e.color2 ? row("색 (변화)", colorPair("color2", f.color2 || f.color)) : ""}
+    ${e.gl ? glParamsSec(e, f, i) : ""}
+    ${e.density || e.gl?.particles || e.cat === "글리치" || e.cat === "파괴" || e.id === "staticNoise" ? row("배치", `<button class="btn" type="button" data-cmd="reseed" data-fx="${i}">무작위 다시 배치</button>`) : ""}
   </div>`;
+  function colorPair(k, v){ return `<input type="color" id="${id(k)}-c" data-prop="${k}" data-kind="color" ${A} value="${v}"><input type="text" id="${id(k)}" data-prop="${k}" data-kind="color" ${A} value="${v}" spellcheck="false">`; }
+}
+
+// WebGL 효과의 세부 값: 그 효과가 쓰는 값만 슬라이더로 보인다 (data-sub="p"로 f.p 안에 저장)
+function glParamsSec(e, f, i){
+  const ok = glHost().ok;
+  return `<div class="gl-params">${e.params.map(k => { const [name, min, max, step] = GL_PARAMS[k]; return row(name, slider(`v${i}-p-${k}`, k, f.p[k], min, max, step, `data-fx="${i}" data-sub="p"`)); }).join("")}</div>
+    <p class="note">${ok ? "WebGL2로 그립니다. 품질은 타임라인 위 '미리보기·높음·최고'에서 바꿉니다." : "이 브라우저는 WebGL2를 지원하지 않아 효과 색의 은은한 빛으로 대신 표시합니다. 내보낸 페이지도 WebGL2가 없는 브라우저에서는 같은 대체 그림을 보여 줍니다."}</p>`;
 }
 
 // 접힌 섹션 제목 목록 (브라우저에 기억)
@@ -295,6 +306,7 @@ function applyField(t){
   if(scope && t.dataset.key !== undefined){ scope.keys = (scope.keys || DEFAULT_KEYS()).map(k => ({...k})); scope = scope.keys[+t.dataset.key]; if(!scope) return false; }
   if(scope && t.dataset.act !== undefined) scope = scope.actions[+t.dataset.act];
   if(scope && t.dataset.fx !== undefined){ scope.fx[+t.dataset.fx] = normFx(scope.fx[+t.dataset.fx]); scope = scope.fx[+t.dataset.fx]; }
+  if(scope && t.dataset.sub) scope = scope[t.dataset.sub] ||= {};
   if(!scope) return false;
   const k = t.dataset.kind, p = t.dataset.prop;
   // 효과를 바꾸면 그 효과의 기본 타이밍으로 맞추고 지연·강도·속도·색은 유지한다

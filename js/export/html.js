@@ -1,7 +1,9 @@
 /* 프로젝트 → 독립 실행 HTML/CSS. 요소는 페이지 컨테이너 안에 절대 위치로 배치하고, 단위(px/%)는 편집기와 같게 유지한다. */
 import { TYPES, state, geo, kidsMap, rgba, baseTransform } from "../core/state.js";
 import { build } from "../fx/presets.js";
-import { buildFx, containerCSS } from "../fx/vfx.js";
+import { buildFx, containerCSS, normFx, fxPoster, EFFECT, glParams } from "../fx/vfx.js";
+import { GL_RUNTIME_SRC, GL_BOOT_SRC } from "../gl/runtime.js";
+import { glQuality } from "../gl/host.js";
 import { ANGLE, ANGLE_RULE } from "../fx/vfx-util.js";
 import { shapeOf, shapeFill, shapeShadow } from "../shapes/shapes.js";
 import { ornamentOf, ornColor, ORN_CSS } from "../shapes/ornaments.js";
@@ -42,6 +44,8 @@ function effects(n, cls, box){
   list.forEach((f, i) => {
     const b = buildFx(n.props, f, box), c = `${cls}-v${i+1}`, seen = new Map();
     rules.push(`.${c}{${containerCSS(n.props, b.clip)}}`, `.${c}>i{position:absolute;display:block}`);
+    // WebGL 효과: 캔버스 하나를 두고 실행 코드(glBoot)가 그린다
+    if(b.gl){ rules.push(`.${c}>canvas{position:absolute;inset:0;width:100%;height:100%;display:block}`); html.push(`<div class="${c}" aria-hidden="true"><canvas class="${c}-gl"></canvas></div>`); return; }
     b.layers.forEach((l, j) => {
       let decl = l.css;
       if(l.keyframes){
@@ -171,7 +175,25 @@ export function interactionConfig(){
   }
   return acts.length || modes.some(m => m === "cli" || m === "aui") ? {modes, acts, disp} : null;
 }
-const scriptTag = cfg => cfg ? `\n<script>\n(${RUNTIME_SRC})(${JSON.stringify(cfg).replace(/</g, "\\u003c")});\n</script>` : "";
+const json = o => JSON.stringify(o).replace(/</g, "\\u003c");
+const scriptTag = cfg => cfg ? `\n<script>\n(${RUNTIME_SRC})(${json(cfg)});\n</script>` : "";
+
+/* WebGL 효과 설정: 셰이더 정의(효과 종류마다 한 번)와 캔버스마다의 값·타이밍. 편집기에서 고른 품질로 그린다.
+   WebGL 효과가 없으면 null (실행 코드를 넣지 않는다). */
+export function glConfig(){
+  const P = state.project, cls = classNames(P.nodes), defs = {}, inst = [];
+  for(const n of P.nodes){
+    if(!n.props.visible) continue;
+    (n.props.fx || []).forEach((raw, i) => {
+      const f = normFx(raw), e = EFFECT[f.effect]; if(!e.gl) return;
+      const D = Math.max(1, f.duration / (f.speed > 0 ? f.speed : 1));
+      defs[e.gl.id] = e.gl;
+      inst.push({s:`.${cls[n.id]}-v${i+1}-gl`, def:e.gl.id, P:glParams(f), delay:Math.max(0, f.delay), D, iters:f.iterations > 0 ? f.iterations : 0, poster:fxPoster(f) ?? f.delay});
+    });
+  }
+  return inst.length ? {quality:glQuality(), defs, inst} : null;
+}
+const glTag = cfg => cfg ? `\n<script>\n(function(){\n${GL_RUNTIME_SRC}\n(${GL_BOOT_SRC})(${json(cfg)});\n})();\n</script>` : "";
 
 // Google Fonts에서 글꼴마다 제공하는 굵기 (없는 굵기를 요청하면 전체 요청이 실패한다)
 const FONT_WEIGHTS = {"IBM Plex Sans KR":[300,400,500,600,700], "Noto Sans KR":[300,400,500,700,900], "Montserrat":[300,400,500,600,700,900], "Inter":[300,400,500,600,700,900],
@@ -200,7 +222,7 @@ ${exportCSS()}
 <body>
   <div class="page">
 ${exportHTML()}
-  </div>${scriptTag(interactionConfig())}
+  </div>${scriptTag(interactionConfig())}${glTag(glConfig())}
 </body>
 </html>
 `;
