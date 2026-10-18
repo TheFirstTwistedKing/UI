@@ -9,6 +9,7 @@ import { PRESETS, PRESET, EASINGS, newAnim, normAnim, endTime, DEFAULT_KEYS } fr
 import { parseColor, fmtColor } from "../core/color.js";
 import { EFFECTS, EFFECT, newFx, normFx, GL_PARAMS } from "../fx/vfx.js";
 import { glHost } from "../gl/host.js";
+import { replaceImage, fitRatio } from "./images.js";
 import { STYLE_KITS, kitAllowed } from "../core/styles.js";
 import { MODES, TRIGGERS, TRIGGER, ACTIONS, ACTION, newAction, modeSupport } from "../core/interact.js";
 
@@ -288,9 +289,11 @@ function renderProps(){
   if(t.image){
     h += `<div class="sec"><h3>이미지</h3>
       ${row("주소 (URL)", txtI("src", p.src.startsWith("data:") ? "(올린 파일)" : p.src))}
-      ${row("파일", `<label class="btn" for="p-file">파일 선택</label><input type="file" id="p-file" accept="image/*" hidden>`)}
+      ${row("파일", `<label class="btn" for="p-file">${p.src ? "다른 파일로 바꾸기" : "파일 선택"}</label><input type="file" id="p-file" accept="image/*" hidden>`)}
       ${row("맞춤", enumI("fit", p.fit, [["cover","채우기 (cover)"],["contain","맞추기 (contain)"],["fill","늘이기 (fill)"]]))}
-      <p class="note">올린 파일은 프로젝트 안에 함께 저장됩니다. 큰 이미지는 브라우저 저장 용량을 많이 차지합니다.</p>
+      ${row("대체 글", txtI("alt", p.alt || ""))}
+      ${p.src ? `<div class="conv"><button class="btn" type="button" data-cmd="imgRatio">원본 비율로 높이 맞추기</button></div>` : ""}
+      <p class="note">캔버스에 이미지 파일을 끌어 놓거나 Ctrl+V로 붙여 넣어도 들어갑니다. 올린 파일은 프로젝트 안에 함께 저장되고, 아주 큰 사진은 긴 변 2000px로 줄여 저장합니다. 대체 글은 화면 낭독기와 이미지가 안 보일 때 쓰입니다.</p>
     </div>`;
   }
   el.innerHTML = h;
@@ -408,6 +411,7 @@ export function initProps(){
         const q = d.props; if(kitAllowed(TYPES[d.type]) && (q.fillAlpha > 0 || q.borderWidth > 0)) q.styleKits = [...(n.props.styleKits || [])];
       } });
       else if(c === "reseed") commit(() => { const f = n.props.fx[+cmd.dataset.fx]; if(f) f.seed = Math.floor(Math.random()*1e9); });
+      else if(c === "imgRatio") fitRatio(n);
       return;
     }
     if(sg){ commit(() => n.props[sg.dataset.seg] = sg.dataset.val); return; }
@@ -442,7 +446,5 @@ function zOrder(n, how){
 
 function loadFile(input){
   const f = input.files[0], n = get(state.sel); if(!f || !n) return;
-  const rd = new FileReader();
-  rd.onload = () => { commit(() => n.props.src = rd.result); toast("이미지를 넣었습니다"); };
-  rd.readAsDataURL(f);
+  replaceImage(n, f).catch(() => toast("이미지를 읽을 수 없습니다"));
 }

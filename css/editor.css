@@ -398,3 +398,5 @@ pre.code{margin:0;background:#060B15;border:1px solid var(--line);border-radius:
   .tl-body{--lab:110px}
 }
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+/* 이미지 파일을 캔버스로 끌어 올 때 */
+.stage.dropping{outline:2px dashed var(--accent);outline-offset:-10px}

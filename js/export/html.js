@@ -150,7 +150,7 @@ export function exportHTML(){
     const pad = "  ".repeat(depth);
     for(const n of km[pid]||[]){
       const p = n.props, t = TYPES[n.type];
-      const inner = t.text ? escH(p.text) : t.image && p.src ? `<img src="${escH(p.src)}" alt="">` : t.shape ? shapeHTML(p) : t.deco ? decoHTML(p) : "";
+      const inner = t.text ? escH(p.text) : t.image && p.src ? `<img src="${escH(p.src)}" alt="${escH(p.alt || "")}">` : t.shape ? shapeHTML(p) : t.deco ? decoHTML(p) : "";
       const kids = km[n.id], fx = effects(n, cls[n.id], boxOf(n)).html;
       if(kids && kids.length){
         lines.push(`${pad}<div class="${cls[n.id]}">${inner}`);

@@ -20,7 +20,7 @@ export const state = { project:null, sel:null, sels:[], snap:true, device:"1440"
 // 레이아웃 결과(아트보드 픽셀 좌표)와 화면 배율. canvas가 채운다.
 export const geo = { L:{}, I:{}, root:{x:0,y:0,w:0,h:0}, scale:1 };
 // 각 편집기 모듈이 자기 렌더 함수를 여기에 등록한다 (모듈 간 순환 의존 방지)
-export const view = { overlay(){}, treeSel(){}, preview(){}, canvas(){}, tree(){}, props(){}, status(){}, toolbar(){}, hint(){}, anim(){}, timeline(){}, clock(){}, showView(){}, leaveMotion(){} };
+export const view = { overlay(){}, treeSel(){}, preview(){}, canvas(){}, tree(){}, props(){}, status(){}, toolbar(){}, hint(){}, anim(){}, timeline(){}, clock(){}, showView(){}, leaveMotion(){}, pickImage(){} };
 export function renderAll(){ view.toolbar(); view.canvas(); view.tree(); view.props(); view.status(); view.hint(); view.timeline(); }
 
 export function makeProps(type){
@@ -38,7 +38,7 @@ export function makeProps(type){
   if(type === "group") Object.assign(p, {w:400, h:280, fillAlpha:0});
   if(t.text) Object.assign(p, {w:320, h:60, fillAlpha:0, text:"텍스트", color:"#ffffff", font:FONTS[0], fontSize:24, fontWeight:500,
     lineHeight:1.3, letterSpacing:0, align:"left", valign:"top"});
-  if(t.image) Object.assign(p, {w:320, h:200, src:"", fit:"cover"});
+  if(t.image) Object.assign(p, {w:320, h:200, src:"", fit:"cover", alt:""});
   return p;
 }
 export function node(type, parent, over){ const p = makeProps(type); Object.assign(p, over||{}); return {id:newId(), type, parent, props:p}; }
