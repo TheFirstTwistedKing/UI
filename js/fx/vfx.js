@@ -222,6 +222,6 @@ export function fxPoster(f){
 // 컨테이너 기본 스타일: 테두리까지 덮고, 모양(모서리)을 따르며, 요소가 숨겨져도(파괴 효과) 보이게 한다
 // (도형·장식은 선을 SVG로 그리므로 상자 테두리가 없다)
 export const containerCSS = (props, clip) => {
-  const b = props.borderWidth > 0 && props.shape == null && props.deco == null ? props.borderWidth : 0;
+  const b = props.borderWidth > 0 && props.shape == null && props.path == null && props.deco == null ? props.borderWidth : 0;
   return `position:absolute;inset:${b ? -b + "px" : "0"};pointer-events:none;border-radius:inherit;visibility:visible${clip ? ";overflow:hidden" : ""}`;
 };

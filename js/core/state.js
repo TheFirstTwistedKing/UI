@@ -7,6 +7,7 @@ export const TYPES = {
   deco:   {label:"장식",   abbr:"Dc", deco:true},
   text:   {label:"텍스트", abbr:"Tx", text:true},
   image:  {label:"이미지", abbr:"Im", image:true},
+  draw:   {label:"그리기", abbr:"Dw", shape:true, draw:true, tool:true},
   group:  {label:"그룹",   abbr:"Gr", container:true}
 };
 export const FONTS = ['"IBM Plex Sans KR"', '"Noto Sans KR"', "Montserrat", "Inter", '"JetBrains Mono"', "Orbitron", "Cinzel", '"Noto Serif KR"', "system-ui", "serif"];
@@ -33,7 +34,9 @@ export function makeProps(type){
     glowOn:false, glowColor:"#73e2ec", glowBlur:16, glowSpread:0, glowAlpha:0.8,
     clip:false, styleKits:[], actions:[], anims:[], fx:[]};
   if(type === "ellipse") Object.assign(p, {w:160, h:160});
-  if(t.shape) Object.assign(p, {w:160, h:160, shape:"star5", fill:"#e9d8a6"});
+  if(t.shape && !t.draw) Object.assign(p, {w:160, h:160, shape:"star5", fill:"#e9d8a6"});
+  // 직접 그린 선: path는 0~100 좌표의 SVG 경로, 선은 테두리 값(borderWidth·borderColor)을 쓴다
+  if(t.draw) Object.assign(p, {path:"", fill:"#73e2ec", fillAlpha:0, borderWidth:3, borderColor:"#73e2ec"});
   if(t.deco) Object.assign(p, {w:320, h:24, deco:"lineDiamond", fill:"#e9d8a6", lineWidth:1.5});
   if(type === "group") Object.assign(p, {w:400, h:280, fillAlpha:0});
   if(t.text) Object.assign(p, {w:320, h:60, fillAlpha:0, text:"텍스트", color:"#ffffff", font:FONTS[0], fontSize:24, fontWeight:500,

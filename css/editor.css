@@ -92,6 +92,15 @@ button,input,select,textarea{font:inherit;color:inherit}
 .tools button:hover{color:var(--fg);background:var(--panel-2)}
 .tools button:active .ic{transform:scale(.9)}
 .tools .ic{transition:transform var(--dur) var(--ease)}
+.tools button[aria-pressed="true"]{color:var(--on-accent);background:var(--accent)}
+.penopts{display:flex;align-items:center;gap:6px}
+.penopts[hidden]{display:none}
+.penopts input[type=color]{width:28px;height:28px;padding:0;border:1px solid var(--line);border-radius:var(--r1);background:none;cursor:pointer}
+.penopts input[type=number]{width:56px;height:28px;background:var(--panel-2);border:1px solid var(--line);border-radius:3px;padding:3px 6px;color:var(--fg);font-family:var(--f-mono);font-size:var(--t-sm)}
+@media (max-width:600px){.penopts .note{display:none}}
+.penopts .note{padding:0;white-space:nowrap}
+.stage.drawing .screen,.stage.drawing .screen *{cursor:crosshair!important}
+.pen-live{position:absolute;left:0;top:0;overflow:visible;pointer-events:none;z-index:10}
 
 /* ---------- 왼쪽: 탭 레일 + 패널 ---------- */
 .left{grid-area:left;position:relative;display:grid;grid-template-columns:44px minmax(0,1fr);border-right:1px solid var(--line);background:var(--panel);min-height:0}

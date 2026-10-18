@@ -3,6 +3,7 @@ import { DEVICES, state, geo, store, validProject, blankProject, renderAll, sele
 import { initCanvas, nudge, zoomTo } from "./editor/canvas.js";
 import { group, ungroup, copy, cut, paste } from "./editor/edit.js";
 import { initTree, showTree, duplicate, removeSel } from "./editor/tree.js";
+import { initDraw } from "./editor/draw.js";
 import { initProps } from "./editor/props.js";
 import { initToolbar, closeModals, modalOpen } from "./editor/toolbar.js";
 import { mountIcons } from "./editor/icons.js";
@@ -119,5 +120,5 @@ if(prefs){
 state.project = validProject(store.current()) || blankProject();
 bindElements(elementFor); view.anim = attach; view.preview = refreshPreview;
 view.showView = v => { showView(v); if(ui.lcol) setPane("lcol", false); saveUI(); };
-initShell(); initToolbar(); initCanvas(); initTree(); initProps(); initTimeline(); initMotion(); initShapes(); initComponents(); initFind();
+initShell(); initToolbar(); initCanvas(); initTree(); initDraw(); initProps(); initTimeline(); initMotion(); initShapes(); initComponents(); initFind();
 renderAll();

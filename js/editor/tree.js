@@ -9,7 +9,7 @@ export function insertParent(){
   return TYPES[n.type].container ? n.id : n.parent;
 }
 function renderInsert(){
-  $("insert").innerHTML = Object.keys(TYPES).map(k => `<button type="button" data-type="${k}" title="${TYPES[k].label} 넣기" aria-label="${TYPES[k].label} 넣기">${icon(k)}<span>${TYPES[k].label}</span></button>`).join("");
+  $("insert").innerHTML = Object.keys(TYPES).filter(k => !TYPES[k].tool).map(k => `<button type="button" data-type="${k}" title="${TYPES[k].label} 넣기" aria-label="${TYPES[k].label} 넣기">${icon(k)}<span>${TYPES[k].label}</span></button>`).join("");
 }
 function updateInsertHint(){
   const pid = insertParent(), p = get(pid);

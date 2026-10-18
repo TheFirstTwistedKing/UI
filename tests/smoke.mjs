@@ -253,6 +253,20 @@ const LIBS = await (async () => {
     check("WebGL VFX: 내보낸 HTML이 편집기와 같은 화면 · 컨텍스트 1개", same && n === 1 && !e2.length, `컨텍스트 ${n}, ${ex.map(s => s.nz).join(", ")} ${e2.join(" | ")}`);
     await ctx2.close();
   }
+  // 직접 그리기: 펜으로 그린 선이 '그리기' 요소(곡선 경로)가 되고, 내보내기에도 들어간다
+  await pg.click("#penBtn");
+  {
+    const r = await pg.locator("#screen").boundingBox(), x0 = r.x + r.width * .2, y0 = r.y + r.height * .7;
+    await pg.mouse.move(x0, y0); await pg.mouse.down();
+    for(let i = 1; i <= 30; i++) await pg.mouse.move(x0 + i * 8, y0 + Math.sin(i / 4) * 30);
+    await pg.mouse.up();
+  }
+  await pg.keyboard.press("Escape");
+  const drawn = await pg.evaluate(async () => {
+    const S = await import("./js/core/state.js"), H = await import("./js/export/html.js"), n = S.state.project.nodes.at(-1);
+    return {type:n.type, curves:(n.props.path.match(/C/g) || []).length, svg:!!document.querySelector(`#screen [data-id="${n.id}"] svg path`), exp:H.exportDocument().includes(`<path d="${n.props.path}"`), pen:document.getElementById("penBtn").getAttribute("aria-pressed")};
+  });
+  check("직접 그리기: 선이 요소가 되고 내보내기에 포함", drawn.type === "draw" && drawn.curves > 2 && drawn.svg && drawn.exp && drawn.pen === "false", JSON.stringify(drawn));
   check("데스크톱: 스크립트 오류 없음", errs.length === 0, errs.join(" | "));
   await ctx.close();
 }

@@ -224,7 +224,7 @@ function renderProps(){
     ${row("섞기 모드", enumI("blend", p.blend || "normal", BLENDS))}
     ${row("부모 안 배치", `<div class="grid9">${g9}</div>`)}
   </div>
-  ${t.shape ? `<div class="sec"><h3>도형</h3>
+  ${t.shape && !t.draw ? `<div class="sec"><h3>도형</h3>
     ${row("모양", `<select id="p-shape" data-prop="shape" data-kind="enum">${SHAPE_CATEGORIES.map(c => `<optgroup label="${c}">${SHAPES.filter(s => s.cat === c).map(s => `<option value="${s.id}"${s.id === p.shape ? " selected" : ""}>${esc(s.name)}</option>`).join("")}</optgroup>`).join("")}</select>`)}
     <p class="note">왼쪽 '도형' 탭에서 모양을 골라 새로 넣을 수도 있습니다.</p>
   </div>` : ""}

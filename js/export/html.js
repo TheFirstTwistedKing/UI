@@ -5,7 +5,7 @@ import { buildFx, containerCSS, normFx, fxPoster, EFFECT, glParams } from "../fx
 import { GL_RUNTIME_SRC, GL_BOOT_SRC } from "../gl/runtime.js";
 import { glQuality } from "../gl/host.js";
 import { ANGLE, ANGLE_RULE } from "../fx/vfx-util.js";
-import { shapeOf, shapeFill, shapeShadow } from "../shapes/shapes.js";
+import { shapeD, shapeEvenOdd, shapeFill, shapeShadow } from "../shapes/shapes.js";
 import { ornamentOf, ornColor, ORN_CSS } from "../shapes/ornaments.js";
 import { boxLook } from "../core/styles.js";
 import { TRIGGER } from "../core/interact.js";
@@ -103,10 +103,11 @@ function shapeRules(n, cls){
   if(p.borderWidth > 0){
     const w = num(p.borderWidth);
     path.push(`stroke:${p.borderColor}`, `stroke-width:${w}px`, "stroke-linejoin:round", "vector-effect:non-scaling-stroke");
+    if(p.path) path.push("stroke-linecap:round");
     if(p.borderStyle === "dashed") path.push(`stroke-dasharray:${w * 3}px ${w * 2}px`);
     if(p.borderStyle === "dotted") path.push(`stroke-dasharray:0 ${w * 2}px`, "stroke-linecap:round");
   }
-  if(shapeOf(p.shape).evenodd) path.push("fill-rule:evenodd");
+  if(shapeEvenOdd(p)) path.push("fill-rule:evenodd");
   r.push(`.${cls}>svg path{${path.join(";")}}`);
   return r;
 }
@@ -116,7 +117,7 @@ function decoRules(n, cls){
   return [`.${cls}>svg{position:absolute;inset:0;width:100%;height:100%;overflow:${o.clip ? "hidden" : "visible"};color:${ornColor(p)};--sw:${num(p.lineWidth)}px${f ? `;filter:${f}` : ""}}`];
 }
 const decoHTML = p => { const o = ornamentOf(p.deco); return `<svg viewBox="0 0 ${o.vb[0]} ${o.vb[1]}" preserveAspectRatio="none" aria-hidden="true">${o.svg}</svg>`; };
-const shapeHTML = p => `<svg viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"><path d="${shapeOf(p.shape).d}"/></svg>`;
+const shapeHTML = p => `<svg viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"><path d="${shapeD(p)}"/></svg>`;
 
 // 요소 크기: 편집기가 계산해 둔 값을 쓰고, 없으면 px 값 또는 기본값
 const boxOf = n => (geo.L && geo.L[n.id]) || {w:n.props.wu === "px" ? n.props.w : 100, h:n.props.hu === "px" ? n.props.h : 100};

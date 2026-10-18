@@ -213,7 +213,7 @@ export function shapeFill(p){ return p.fillAlpha > 0 ? (p.fillAlpha >= 1 ? p.fil
 export function shapeStroke(p){
   if(!(p.borderWidth > 0)) return "";
   const w = p.borderWidth, dash = p.borderStyle === "dashed" ? ` stroke-dasharray="${w * 3} ${w * 2}"` : p.borderStyle === "dotted" ? ` stroke-dasharray="0 ${w * 2}" stroke-linecap="round"` : "";
-  return ` stroke="${p.borderColor}" stroke-width="${w}" stroke-linejoin="round" vector-effect="non-scaling-stroke"${dash}`;
+  return ` stroke="${p.borderColor}" stroke-width="${w}" stroke-linejoin="round"${p.path ? ' stroke-linecap="round"' : ""} vector-effect="non-scaling-stroke"${dash}`;
 }
 export function shapeShadow(p){
   const f = [];
@@ -221,7 +221,10 @@ export function shapeShadow(p){
   if(p.glowOn) f.push(`drop-shadow(0 0 ${p.glowBlur / 2}px ${hexA(p.glowColor, p.glowAlpha)})`);
   return f.join(" ");
 }
+// 직접 그린 선(path)이 있으면 그 경로를, 아니면 도형 목록의 경로를 쓴다
+export const shapeD = p => p.path || shapeOf(p.shape).d;
+export const shapeEvenOdd = p => !p.path && !!shapeOf(p.shape).evenodd;
 export function shapeMarkup(p, cls = "shp"){
-  const s = shapeOf(p.shape), f = shapeShadow(p);
-  return `<svg class="${cls}" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"${f ? ` style="filter:${f}"` : ""}><path d="${s.d}" fill="${shapeFill(p)}"${s.evenodd ? ' fill-rule="evenodd"' : ""}${shapeStroke(p)}/></svg>`;
+  const f = shapeShadow(p);
+  return `<svg class="${cls}" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"${f ? ` style="filter:${f}"` : ""}><path d="${shapeD(p)}" fill="${shapeFill(p)}"${shapeEvenOdd(p) ? ' fill-rule="evenodd"' : ""}${shapeStroke(p)}/></svg>`;
 }

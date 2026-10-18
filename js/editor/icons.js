@@ -25,6 +25,7 @@ const P = {
   text:'<path d="M3 3.5h10M8 3.5v9.5M6 13h4"/>',
   image:'<rect x="2" y="2.5" width="12" height="11" rx="1"/><circle cx="5.5" cy="6" r="1.2"/><path d="m2.5 12 4-4 3 3 1.5-1.5 2.5 2.5"/>',
   group:'<path d="M2 5V2h3M11 2h3v3M14 11v3h-3M5 14H2v-3"/><rect x="5" y="5" width="6" height="6" rx=".5"/>',
+  draw:'<path d="M2.5 13.5c1.5-.3 2.6-1 3.4-1.8l7-7a1.6 1.6 0 0 0-2.3-2.3l-7 7c-.8.8-1.4 1.9-1.1 4.1z"/><path d="m9.5 3.8 2.3 2.3"/>',
   page:'<rect x="3" y="1.5" width="10" height="13" rx="1"/><path d="M5.5 5h5M5.5 8h5M5.5 11h3"/>',
   // 왼쪽 패널 탭
   layers:'<path d="m8 2 6 3-6 3-6-3z"/><path d="m2 8 6 3 6-3"/><path d="m2 11 6 3 6-3"/>',
